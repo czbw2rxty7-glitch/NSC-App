@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NSC Portal">
+<meta name="theme-color" content="#0d1b2a">
+<title>NSC Performance</title>
+<style>
+:root{
+  --navy:#0d1b2a;--cyan:#00c2e0;--cyan-dim:#009ab3;--white:#f4f7fa;
+  --card:#162333;--card2:#1e2f42;--card3:#243547;
+  --border:rgba(0,194,224,0.15);--text:#c8d8e8;--muted:#6a8aa8;
+  --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--r:12px;
+  --sb:env(safe-area-inset-bottom,0px);
+  --st:env(safe-area-inset-top,0px);
+  --nh:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;}
+
+.screen{position:fixed;inset:0;display:none;flex-direction:column;overflow:hidden;}
+.screen.active{display:flex;}
+
+/* ── LOGIN ── */
+#loginScreen{background:var(--navy);align-items:center;overflow-y:auto;padding:60px 24px 40px;}
+.logo-icon{width:74px;height:74px;background:var(--cyan);border-radius:18px;display:inline-flex;align-items:center;justify-content:center;font-weight:900;color:var(--navy);font-size:28px;box-shadow:0 8px 32px rgba(0,194,224,.3);margin-bottom:14px;}
+.logo-title{font-weight:800;font-size:28px;letter-spacing:-.5px;}
+.logo-sub{font-size:14px;color:var(--muted);margin-top:4px;margin-bottom:28px;}
+.tabs{display:flex;background:var(--card2);border-radius:10px;padding:4px;width:100%;max-width:360px;margin-bottom:20px;}
+.tab{flex:1;padding:10px;text-align:center;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);border:none;background:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;transition:all .2s;}
+.tab.on{background:var(--cyan);color:var(--navy);}
+.lform{width:100%;max-width:360px;}
+.lcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:14px;}
+.ltitle{font-weight:800;font-size:18px;margin-bottom:16px;}
+.fi{margin-bottom:14px;}
+.fi label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:5px;}
+.fi input,.fi select,.fi textarea{width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;outline:none;-webkit-appearance:none;}
+.fi input:focus,.fi select:focus{border-color:var(--cyan);}
+.fi textarea{resize:none;min-height:76px;}
+.fi2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.errmsg{font-size:12px;color:var(--red);margin-bottom:10px;display:none;padding:8px 10px;background:rgba(239,68,68,.1);border-radius:6px;}
+.sep{text-align:center;color:var(--muted);font-size:12px;margin:12px 0;position:relative;}
+.sep::before,.sep::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--border);}
+.sep::before{left:0;}.sep::after{right:0;}
+.demobox{background:var(--card2);border-radius:9px;padding:14px;font-size:13px;color:var(--muted);line-height:1.9;margin-top:14px;}
+.demobox b{color:var(--cyan);}
+.demobox .dtitle{font-weight:700;color:var(--white);margin-bottom:6px;font-size:14px;}
+
+/* ── APP ── */
+.appbar{background:var(--card);border-bottom:1px solid var(--border);padding:calc(var(--st) + 10px) 16px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;}
+.ablogo{display:flex;align-items:center;gap:10px;}
+.abicon{width:34px;height:34px;background:var(--cyan);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--navy);font-size:13px;flex-shrink:0;}
+.abname{font-weight:700;font-size:17px;}
+.abrole{font-size:10px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
+.abright{display:flex;align-items:center;gap:8px;}
+.abav{width:34px;height:34px;border-radius:50%;background:var(--cyan);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--navy);font-size:13px;}
+.abun{font-size:13px;font-weight:600;}
+.logoutbtn{background:transparent;border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+
+.pwrap{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 16px calc(var(--nh) + var(--sb) + 16px);-webkit-overflow-scrolling:touch;}
+
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--card);border-top:1px solid var(--border);display:flex;padding-bottom:var(--sb);height:calc(var(--nh) + var(--sb));}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:color .18s;padding:8px 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+.bni.on{color:var(--cyan);}
+.bni-icon{font-size:20px;line-height:1;}
+.bni-label{font-size:10px;font-weight:600;letter-spacing:.3px;}
+.bni-dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);margin-top:2px;opacity:0;}
+.bni.on .bni-dot{opacity:1;}
+
+.page{display:none;}
+.page.on{display:block;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:13px 20px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;border:none;transition:all .18s;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-appearance:none;}
+.btn-p{background:var(--cyan);color:var(--navy);}
+.btn-p:active{background:var(--cyan-dim);}
+.btn-g{background:transparent;color:var(--text);border:1px solid var(--border);}
+.btn-g:active{background:var(--card2);}
+.btn-d{background:rgba(239,68,68,.13);color:var(--red);border:1px solid rgba(239,68,68,.25);}
+.btn-s{background:rgba(34,197,94,.13);color:var(--green);border:1px solid rgba(34,197,94,.25);}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:8px;}
+.btn-w{width:100%;display:flex;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px;}
+.ctitle{font-weight:700;font-size:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+
+/* ── STATS ── */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;}
+.slabel{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.sval{font-weight:800;font-size:28px;color:var(--cyan);line-height:1;}
+.snote{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* ── LIST ROWS ── */
+.lrow{display:flex;align-items:center;gap:12px;padding:12px;background:var(--card2);border-radius:9px;margin-bottom:8px;}
+.lrow:last-child{margin-bottom:0;}
+.lmain{flex:1;min-width:0;}
+.ltitle{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lsub{font-size:12px;color:var(--muted);margin-top:2px;}
+.lright{flex-shrink:0;text-align:right;}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;}
+.b-gr{background:rgba(34,197,94,.14);color:var(--green);}
+.b-am{background:rgba(245,158,11,.14);color:var(--amber);}
+.b-re{background:rgba(239,68,68,.14);color:var(--red);}
+.b-cy{background:rgba(0,194,224,.14);color:var(--cyan);}
+.b-gy{background:rgba(106,138,168,.14);color:var(--muted);}
+.tag{display:inline-flex;padding:2px 7px;background:rgba(0,194,224,.1);color:var(--cyan);border-radius:4px;font-size:11px;font-weight:600;margin:2px;}
+
+/* ── AVATAR ── */
+.av{border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--cyan-dim));display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--navy);flex-shrink:0;}
+.av-s{width:38px;height:38px;font-size:14px;}
+.av-m{width:48px;height:48px;font-size:18px;}
+
+/* ── ATTENDANCE ── */
+.attog{display:flex;border-radius:7px;overflow:hidden;border:1px solid var(--border);}
+.atopt{padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);}
+.atopt.present{background:rgba(34,197,94,.2);color:var(--green);}
+.atopt.absent{background:rgba(239,68,68,.2);color:var(--red);}
+.atopt.late{background:rgba(245,158,11,.2);color:var(--amber);}
+
+/* ── BOOKING STEPS ── */
+.stepbar{display:flex;align-items:center;margin-bottom:20px;overflow-x:auto;padding-bottom:4px;}
+.sitem{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.snum{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0;}
+.snum.active{border-color:var(--cyan);background:var(--cyan);color:var(--navy);}
+.snum.done{border-color:var(--green);background:var(--green);color:var(--navy);}
+.slbl{font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;}
+.slbl.active{color:var(--cyan);}
+.slbl.done{color:var(--green);}
+.sconn{width:16px;height:2px;background:var(--border);flex-shrink:0;margin:0 2px;}
+.sconn.done{background:var(--green);}
+
+.scard{background:var(--card2);border:2px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .18s;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;}
+.scard.sel{border-color:var(--cyan);background:rgba(0,194,224,.07);}
+.scard.full{opacity:.5;cursor:not-allowed;}
+.scheck{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:all .18s;margin-top:2px;}
+.scard.sel .scheck{border-color:var(--cyan);background:var(--cyan);color:var(--navy);}
+
+.oline{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.oline:last-child{border-bottom:none;}
+.ototal{display:flex;align-items:center;justify-content:space-between;padding:12px 0 0;border-top:2px solid var(--border);margin-top:4px;}
+
+/* ── SHEET ── */
+.moverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+.sheet{background:var(--card);border-radius:18px 18px 0 0;width:100%;max-height:90vh;overflow-y:auto;padding:0 0 calc(var(--sb) + 16px);animation:slideUp .28s ease;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.shandle{width:40px;height:4px;background:var(--muted);border-radius:99px;margin:10px auto 16px;opacity:.4;}
+.stitle{font-weight:800;font-size:20px;padding:0 18px 14px;border-bottom:1px solid var(--border);}
+.sbody{padding:16px 18px;}
+.sactions{padding:12px 18px 0;display:flex;flex-direction:column;gap:8px;}
+
+/* ── MISC ── */
+.secdiv{font-weight:700;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin:16px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+.dr{display:flex;gap:8px;margin-bottom:8px;}
+.dk{font-size:12px;color:var(--muted);width:110px;flex-shrink:0;}
+.dv{font-size:13px;color:var(--text);flex:1;}
+.empty{text-align:center;padding:36px 20px;color:var(--muted);}
+.ei{font-size:36px;margin-bottom:10px;}
+.pcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .18s;}
+.pcard:active{border-color:var(--cyan);}
+.ci{display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--card2);border-radius:9px;margin-bottom:8px;}
+.ci input[type=checkbox]{width:22px;height:22px;accent-color:var(--cyan);flex-shrink:0;margin-top:1px;cursor:pointer;}
+.clabel{font-size:13px;color:var(--text);line-height:1.5;}
+.req{color:var(--red);margin-right:2px;}
+.phrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;}
+.phtitle{font-weight:800;font-size:24px;}
+.phsub{font-size:13px;color:var(--muted);margin-top:2px;}
+.sbox{position:relative;margin-bottom:14px;}
+.sbox input{width:100%;padding:11px 14px 11px 38px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;outline:none;}
+.sbox input:focus{border-color:var(--cyan);}
+.sicon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--muted);}
+.sfield{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:13px 14px;}
+.sfield input{border:none;background:transparent;color:var(--white);font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;outline:none;width:100%;}
+.paycard{background:var(--card2);border-radius:9px;padding:12px;margin-bottom:8px;}
+.cpill{display:inline-block;background:var(--card3);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:monospace;font-size:11px;color:var(--cyan);}
+.cblock{background:var(--card3);border-radius:9px;padding:12px;font-family:monospace;font-size:11px;color:var(--text);line-height:1.6;overflow-x:auto;white-space:pre;}
+.gstep{display:flex;gap:12px;margin-bottom:16px;}
+.gnum{width:26px;height:26px;border-radius:50%;background:var(--cyan);color:var(--navy);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.gtitle{font-weight:700;font-size:14px;margin-bottom:3px;}
+.gdesc{font-size:13px;color:var(--text);line-height:1.5;}
+
+/* ── TOAST ── */
+.twrap{position:fixed;top:calc(var(--st) + 80px);left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:7px;pointer-events:none;width:90%;max-width:340px;}
+.toast{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--white);box-shadow:0 8px 28px rgba(0,0,0,.4);animation:fadeIn .28s ease;display:flex;align-items:center;gap:8px;}
+.toast.ok{border-left:3px solid var(--green);}
+.toast.err{border-left:3px solid var(--red);}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ LOGIN ═══ -->
+<div class="screen active" id="loginScreen">
+  <div style="text-align:center">
+    <div class="logo-icon">NSC</div>
+    <div class="logo-title">NSC Performance</div>
+    <div class="logo-sub">Coaching Management Portal</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="tabP" onclick="switchTab('parent')">Parent</button>
+    <button class="tab" id="tabS" onclick="switchTab('staff')">Staff</button>
+  </div>
+
+  <div class="lform">
+    <!-- PARENT -->
+    <div id="panelParent">
+      <div id="signInView">
+        <div class="lcard">
+          <div class="ltitle">Sign In</div>
+          <div class="fi"><label>Email</label><input type="email" id="pl_email" placeholder="you@example.com" autocomplete="email"></div>
+          <div class="fi"><label>Password</label><input type="password" id="pl_pass" placeholder="Your password" autocomplete="current-password"></div>
+          <div class="errmsg" id="pl_err">Incorrect email or password.</div>
+          <button class="btn btn-p btn-w" onclick="parentLogin()">Sign In</button>
+        </div>
+        <div class="sep">New to NSC?</div>
+        <button class="btn btn-g btn-w" onclick="showReg()">Create Account</button>
+        <div class="demobox">
+          <div class="dtitle">Demo Account</div>
+          <div>Email: <b>demo@nsc.com</b></div>
+          <div>Password: <b>demo123</b></div>
+        </div>
+      </div>
+      <div id="registerView" style="display:none">
+        <div class="lcard">
+          <div class="ltitle">Create Account</div>
+          <div class="fi2">
+            <div class="fi"><label>First Name</label><input id="pr_first" placeholder="First name" autocomplete="given-name"></div>
+            <div class="fi"><label>Last Name</label><input id="pr_last" placeholder="Last name" autocomplete="family-name"></div>
+          </div>
+          <div class="fi"><label>Email</label><input type="email" id="pr_email" placeholder="you@example.com" autocomplete="email"></div>
+          <div class="fi"><label>Mobile</label><input type="tel" id="pr_phone" placeholder="07700 000000" autocomplete="tel"></div>
+          <div class="fi"><label>Password</label><input type="password" id="pr_pass" placeholder="Min 6 characters" autocomplete="new-password"></div>
+          <div class="fi"><label>Confirm Password</label><input type="password" id="pr_pass2" placeholder="Repeat password" autocomplete="new-password"></div>
+          <div class="errmsg" id="pr_err"></div>
+          <button class="btn btn-p btn-w" onclick="parentRegister()">Create Account</button>
+        </div>
+        <div class="sep">Already have an account?</div>
+        <button class="btn btn-g btn-w" onclick="showSignIn()">Sign In</button>
+      </div>
+    </div>
+
+    <!-- STAFF -->
+    <div id="panelStaff" style="display:none">
+      <div class="lcard">
+        <div class="ltitle">Staff Sign In</div>
+        <div class="fi"><label>Username</label><input id="sl_user" placeholder="Staff username" autocomplete="username"></div>
+        <div class="fi"><label>Password</label><input type="password" id="sl_pass" placeholder="Staff password" autocomplete="current-password"></div>
+        <div class="errmsg" id="sl_err">Incorrect username or password.</div>
+        <button class="btn btn-p btn-w" onclick="staffLogin()">Sign In</button>
+      </div>
+      <div class="demobox">
+        <div class="dtitle">Staff Demo</div>
+        <div>Username: <b>nathaniel</b></div>
+        <div>Password: <b>nsc2026</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ APP ═══ -->
+<div class="screen" id="appScreen">
+  <div class="appbar">
+    <div class="ablogo">
+      <div class="abicon">NSC</div>
+      <div>
+        <div class="abname">NSC Performance</div>
+        <div class="abrole" id="hRole"></div>
+      </div>
+    </div>
+    <div class="abright">
+      <div class="abav" id="hAv"></div>
+      <div class="abun" id="hName"></div>
+      <button class="logoutbtn" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="pwrap" id="pwrap">
+
+    <!-- STAFF: DASHBOARD -->
+    <div class="page" id="pg-dash">
+      <div class="phrow">
+        <div><div class="phtitle">Dashboard</div><div class="phsub" id="dashsub"></div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-g btn-sm" onclick="openSheet('shSess')">+ Session</button>
+          <button class="btn btn-p btn-sm" onclick="openSheet('shPlay')">+ Player</button>
+        </div>
+      </div>
+      <div class="sgrid" id="dStats"></div>
+      <div class="card"><div class="ctitle">Upcoming Sessions</div><div id="dUp"></div></div>
+      <div class="card"><div class="ctitle">Recent Payments</div><div id="dPay"></div></div>
+    </div>
+
+    <!-- STAFF: SESSIONS -->
+    <div class="page" id="pg-sess">
+      <div class="phrow"><div class="phtitle">Sessions</div><button class="btn btn-p btn-sm" onclick="openSheet('shSess')">+ New</button></div>
+      <div id="sessList"></div>
+    </div>
+
+    <!-- STAFF: ATTENDANCE -->
+    <div class="page" id="pg-att">
+      <div class="phrow"><div class="phtitle">Attendance</div></div>
+      <div class="fi" style="margin-bottom:14px">
+        <label>Select Session</label>
+        <select id="attPick" onchange="renderAttSheet()" style="width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;">
+          <option value="">Choose a session...</option>
+        </select>
+      </div>
+      <div id="attSheet"></div>
+    </div>
+
+    <!-- STAFF: PLAYERS -->
+    <div class="page" id="pg-play">
+      <div class="phrow"><div class="phtitle">Players</div><button class="btn btn-p btn-sm" onclick="openSheet('shPlay')">+ Add</button></div>
+      <div class="sbox"><span class="sicon">🔍</span><input placeholder="Search players..." oninput="renderPlayers(this.value)"></div>
+      <div id="playerList"></div>
+    </div>
+
+    <!-- STAFF: PAYMENTS -->
+    <div class="page" id="pg-pay">
+      <div class="phrow"><div class="phtitle">Payments</div><button class="btn btn-g btn-sm" onclick="goPage('pg-guide')">Setup Guide</button></div>
+      <div class="sgrid" id="payStats"></div>
+      <div id="payList"></div>
+    </div>
+
+    <!-- STAFF: GUIDE -->
+    <div class="page" id="pg-guide">
+      <div class="phrow"><div class="phtitle">Stripe Setup</div><button class="btn btn-g btn-sm" onclick="goPage('pg-pay')">Back</button></div>
+      <div class="card">
+        <div class="ctitle">Go Live in 30 Minutes</div>
+        <div class="gstep"><div class="gnum">1</div><div><div class="gtitle">Create Stripe account</div><div class="gdesc">Go to <strong style="color:var(--cyan)">stripe.com</strong> — free to join. UK card fee: <strong>1.4% + 20p</strong> per transaction.</div></div></div>
+        <div class="gstep"><div class="gnum">2</div><div><div class="gtitle">Get your keys</div><div class="gdesc">Stripe Dashboard → Developers → API Keys. Copy <span class="cpill">pk_live_...</span> (publishable) and <span class="cpill">sk_live_...</span> (secret).</div></div></div>
+        <div class="gstep"><div class="gnum">3</div><div><div class="gtitle">Update index.html</div><div class="gdesc">Find <span class="cpill">pk_test_51TUYvO8...</span> near the top of the script in index.html and replace it with your <span class="cpill">pk_live_...</span> key.</div></div></div>
+        <div class="gstep"><div class="gnum">4</div><div><div class="gtitle">Add secret key to Netlify</div><div class="gdesc">Netlify → Site Configuration → Environment Variables → Add <span class="cpill">STRIPE_SECRET_KEY</span> = your sk_live_ key.</div></div></div>
+        <div class="gstep"><div class="gnum">5</div><div><div class="gtitle">Test with demo card</div><div class="gdesc">Card: <span class="cpill">4242 4242 4242 4242</span> · Any future expiry · Any 3-digit CVC</div></div></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Netlify Function Code</div>
+        <div class="cblock">const stripe = require('stripe')(
+  process.env.STRIPE_SECRET_KEY
+);
+exports.handler = async (event) => {
+  const { amount, description } =
+    JSON.parse(event.body);
+  const intent =
+    await stripe.paymentIntents.create({
+      amount, currency: 'gbp', description
+    });
+  return {
+    statusCode: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*'
+    },
+    body: JSON.stringify({
+      clientSecret: intent.client_secret
+    })
+  };
+};</div>
+      </div>
+    </div>
+
+    <!-- PARENT: HOME -->
+    <div class="page" id="pg-phome">
+      <div class="phrow">
+        <div><div class="phtitle">Welcome!</div><div class="phsub" id="pWelcome"></div></div>
+        <button class="btn btn-p btn-sm" onclick="goPage('pg-book')">Book Session</button>
+      </div>
+      <div class="sgrid" id="pStats"></div>
+      <div class="card">
+        <div class="ctitle">My Children <button class="btn btn-sm btn-g" onclick="openSheet('shChild')">+ Add</button></div>
+        <div id="myKids"></div>
+      </div>
+      <div class="card"><div class="ctitle">My Bookings</div><div id="myBks"></div></div>
+    </div>
+
+    <!-- PARENT: BOOK -->
+    <div class="page" id="pg-book">
+      <div id="bookContent"></div>
+    </div>
+
+    <!-- PARENT: HISTORY -->
+    <div class="page" id="pg-hist">
+      <div class="phrow"><div class="phtitle">Booking History</div></div>
+      <div id="histList"></div>
+    </div>
+
+  </div>
+  <nav class="bnav" id="bnav"></nav>
+</div>
+
+<!-- ═══════════════════════════════ TOAST ═══ -->
+<div class="twrap" id="twrap"></div>
+
+<!-- ═══════════════════════════════ SHEETS ═══ -->
+
+<!-- Session Sheet -->
+<div class="moverlay" id="shSess" style="display:none" onclick="bgClose(event,'shSess')">
+<div class="sheet">
+  <div class="shandle"></div>
+  <div class="stitle" id="shSessTitle">New Session</div>
+  <div class="sbody">
+    <input type="hidden" id="eSId">
+    <div class="fi2">
+      <div class="fi"><label>Session Name</label><input id="sN" placeholder="e.g. Tuesday Football"></div>
+      <div class="fi"><label>Type</label>
+        <select id="sTy" style="width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;">
+          <option>Youth Football</option><option>School PE</option><option>After School Club</option><option>Holiday Camp</option>
+        </select>
+      </div>
+    </div>
+    <div class="fi2">
+      <div class="fi"><label>Date</label><input type="date" id="sDt"></div>
+      <div class="fi"><label>Time</label><input type="time" id="sTm"></div>
+    </div>
+    <div class="fi"><label>Location</label><input id="sLo" placeholder="Venue name"></div>
+    <div class="fi2">
+      <div class="fi"><label>Age Group</label>
+        <select id="sAg" style="width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;">
+          <option>U7s</option><option>U8s</option><option>U9s</option><option>U10s</option><option>U11s</option><option>U12s</option><option>U13s</option><option>U14s</option><option>Mixed</option>
+        </select>
+      </div>
+      <div class="fi"><label>Capacity</label><input type="number" id="sCa" value="20"></div>
+    </div>
+    <div class="fi"><label>Price (£)</label><input type="number" step="0.01" id="sPr" placeholder="5.00"></div>
+    <div class="fi"><label>Notes for Parents</label><textarea id="sNo" placeholder="e.g. Bring boots and shin pads"></textarea></div>
+  </div>
+  <div class="sactions">
+    <button class="btn btn-p btn-w" onclick="saveSession()">Save Session</button>
+    <button class="btn btn-g btn-w" onclick="closeSheet('shSess')">Cancel</button>
+  </div>
+</div>
+</div>
+
+<!-- Player Sheet -->
+<div class="moverlay" id="shPlay" style="display:none" onclick="bgClose(event,'shPlay')">
+<div class="sheet">
+  <div class="shandle"></div>
+  <div class="stitle" id="shPlayTitle">Add Player</div>
+  <div class="sbody">
+    <input type="hidden" id="ePId">
+    <div class="fi2">
+      <div class="fi"><label>First Name</label><input id="pFi"></div>
+      <div class="fi"><label>Last Name</label><input id="pLa"></div>
+    </div>
+    <div class="fi2">
+      <div class="fi"><label>Date of Birth</label><input type="date" id="pDb"></div>
+      <div class="fi"><label>Age Group</label>
+        <select id="pAg" style="width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;">
+          <option>U7s</option><option>U8s</option><option>U9s</option><option>U10s</option><option>U11s</option><option>U12s</option><option>U13s</option><option>U14s</option>
+        </select>
+      </div>
+    </div>
+    <div class="fi2">
+      <div class="fi"><label>Parent Name</label><input id="pPa"></div>
+      <div class="fi"><label>Parent Email</label><input type="email" id="pEm"></div>
+    </div>
+    <div class="fi"><label>Parent Phone</label><input type="tel" id="pPh"></div>
+    <div class="fi"><label>Medical Notes</label><textarea id="pMe" placeholder="Allergies, conditions, medications..."></textarea></div>
+    <div class="fi"><label>Status</label>
+      <select id="pSt" style="width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;">
+        <option value="active">Active</option><option value="trial">Trial</option><option value="inactive">Inactive</option>
+      </select>
+    </div>
+  </div>
+  <div class="sactions">
+    <button class="btn btn-p btn-w" onclick="savePlayer()">Save Player</button>
+    <button class="btn btn-g btn-w" onclick="closeSheet('shPlay')">Cancel</button>
+  </div>
+</div>
+</div>
+
+<!-- Child Sheet -->
+<div class="moverlay" id="shChild" style="display:none" onclick="bgClose(event,'shChild')">
+<div class="sheet">
+  <div class="shandle"></div>
+  <div class="stitle">Add My Child</div>
+  <div class="sbody">
+    <div class="fi2">
+      <div class="fi"><label>First Name</label><input id="cFi"></div>
+      <div class="fi"><label>Last Name</label><input id="cLa"></div>
+    </div>
+    <div class="fi2">
+      <div class="fi"><label>Date of Birth</label><input type="date" id="cDb"></div>
+      <div class="fi"><label>Age Group</label>
+        <select id="cAg" style="width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;">
+          <option>U7s</option><option>U8s</option><option>U9s</option><option>U10s</option><option>U11s</option><option>U12s</option><option>U13s</option><option>U14s</option>
+        </select>
+      </div>
+    </div>
+    <div class="fi"><label>Medical / Notes for NSC</label><textarea id="cMe" placeholder="Allergies, conditions..."></textarea></div>
+  </div>
+  <div class="sactions">
+    <button class="btn btn-p btn-w" onclick="saveChild()">Add Child</button>
+    <button class="btn btn-g btn-w" onclick="closeSheet('shChild')">Cancel</button>
+  </div>
+</div>
+</div>
+
+<script>
+"use strict";
+
+// ─── STRIPE KEY ───────────────────────────────────────────────
+// Replace pk_test_ with pk_live_ when going live
+var STRIPE_KEY = "pk_test_51TUYvO8jJv8rZV5ud00TQe7QWOSwpnhOeIfXI7QfuzcWARWDnktfDmGgeaUDzbWyadISHkTKGa9rykXv03GEJmpX00v7FsQoxu";
+
+// ─── ACCOUNTS ─────────────────────────────────────────────────
+var ACCOUNTS = {
+  staff: [
+    { id: "st1", username: "nathaniel", password: "nsc2026", name: "Nathaniel Steed", role: "Founder & Director" }
+  ],
+  parents: [
+    { id: "pa0", email: "demo@nsc.com", password: "demo123", first: "Emma", last: "Williams",
+      phone: "07700 111222", children: [
+        { id: "ch0", first: "Sophia", last: "Williams", dob: "2015-06-20", ageGroup: "U10s", medical: "" }
+      ]
+    }
+  ]
+};
+
+// ─── DATA ─────────────────────────────────────────────────────
+var DB = {
+  sessions: [
+    { id: "s1", name: "Tuesday Youth Football", type: "Youth Football", date: "2026-05-13", time: "18:00",
+      location: "Harlow Town FC", ageGroup: "Mixed", capacity: 20, price: 5, notes: "Bring boots and shin pads.", bookings: ["p1","p2"] },
+    { id: "s2", name: "Saturday Junior Club", type: "After School Club", date: "2026-05-17", time: "10:00",
+      location: "Latton Bush Leisure Centre", ageGroup: "U10s", capacity: 16, price: 5, notes: "", bookings: ["p1"] },
+    { id: "s3", name: "Summer Holiday Camp", type: "Holiday Camp", date: "2026-07-22", time: "09:00",
+      location: "Harlow Town FC", ageGroup: "Mixed", capacity: 30, price: 25, notes: "Full day — bring a packed lunch.", bookings: [] },
+    { id: "s4", name: "St Andrews PE Session", type: "School PE", date: "2026-05-09", time: "09:30",
+      location: "St Andrews CofE Primary", ageGroup: "U9s", capacity: 30, price: 0, notes: "", bookings: ["p2"] }
+  ],
+  players: [
+    { id: "p1", first: "Jack", last: "Thompson", dob: "2015-03-14", ageGroup: "U10s",
+      parent: "Sarah Thompson", email: "sarah.t@gmail.com", phone: "07712 345678",
+      medical: "Mild asthma - inhaler carried.", status: "active" },
+    { id: "p2", first: "Ethan", last: "Clarke", dob: "2014-08-22", ageGroup: "U11s",
+      parent: "David Clarke", email: "david.c@outlook.com", phone: "07823 456789",
+      medical: "", status: "active" },
+    { id: "p3", first: "Mia", last: "Patel", dob: "2016-01-05", ageGroup: "U9s",
+      parent: "Priya Patel", email: "priya.patel@gmail.com", phone: "07934 567890",
+      medical: "Nut allergy - epipen in bag.", status: "active" }
+  ],
+  attendance: { "s4_p2": "present", "s2_p1": "present" },
+  payments: [
+    { id: "py1", childName: "Jack Thompson", parentName: "Sarah Thompson",
+      parentEmail: "sarah.t@gmail.com", sessionId: "s1", sessionName: "Tuesday Youth Football",
+      amount: 5, status: "paid", method: "card", ref: "pi_demo_001", date: "2026-05-01" },
+    { id: "py2", childName: "Sophia Williams", parentName: "Emma Williams",
+      parentEmail: "demo@nsc.com", sessionId: "s2", sessionName: "Saturday Junior Club",
+      amount: 5, status: "paid", method: "card", ref: "pi_demo_002", date: "2026-05-03" }
+  ]
+};
+
+// ─── BOOKING STATE ────────────────────────────────────────────
+var BF = { step: 1, sel: [], child: {}, parent: {}, consents: {} };
+var STEPS = ["Sessions", "Child", "Parent", "Consents", "Pay"];
+
+// ─── APP STATE ────────────────────────────────────────────────
+var USER = null;
+var ROLE = null;
+var CUR = "";
+
+// ─── UTILS ────────────────────────────────────────────────────
+function uid() { return "x" + Date.now() + Math.random().toString(36).slice(2, 6); }
+function gv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ""; }
+function sv(id, v) { var e = document.getElementById(id); if (e) e.value = v == null ? "" : String(v); }
+function today() { return new Date().toISOString().split("T")[0]; }
+
+function fmtDate(d) {
+  if (!d) return "—";
+  var p = d.split("-");
+  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return parseInt(p[2]) + " " + months[parseInt(p[1]) - 1] + " " + p[0];
+}
+
+function fmtTime(t) {
+  if (!t) return "";
+  var p = t.split(":");
+  var h = parseInt(p[0]);
+  return (h % 12 || 12) + ":" + p[1] + (h >= 12 ? "pm" : "am");
+}
+
+function initials(n) {
+  return n.split(" ").map(function(w) { return w[0] || ""; }).slice(0, 2).join("").toUpperCase();
+}
+
+function calcAge(dob) {
+  if (!dob) return "?";
+  var b = new Date(dob), n = new Date();
+  var a = n.getFullYear() - b.getFullYear();
+  if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--;
+  return a;
+}
+
+function gbp(n) { return "£" + parseFloat(n || 0).toFixed(2); }
+
+function sbadge(s) {
+  if (s === "active") return "<span class=\"badge b-gr\">Active</span>";
+  if (s === "trial") return "<span class=\"badge b-am\">Trial</span>";
+  return "<span class=\"badge b-gy\">Inactive</span>";
+}
+
+function findById(arr, id) {
+  for (var i = 0; i < arr.length; i++) { if (arr[i].id === id) return arr[i]; }
+  return null;
+}
+
+// ─── TOAST ────────────────────────────────────────────────────
+function toast(msg, type) {
+  var w = document.getElementById("twrap");
+  var t = document.createElement("div");
+  t.className = "toast " + (type || "ok");
+  t.textContent = (type === "err" ? "⚠  " : "✓  ") + msg;
+  w.appendChild(t);
+  setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3200);
+}
+
+// ─── SHEETS ───────────────────────────────────────────────────
+function openSheet(id) { document.getElementById(id).style.display = "flex"; }
+function closeSheet(id) { document.getElementById(id).style.display = "none"; }
+function bgClose(e, id) { if (e.target === document.getElementById(id)) closeSheet(id); }
+
+// ─── LOGIN ────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById("tabP").className = "tab" + (tab === "parent" ? " on" : "");
+  document.getElementById("tabS").className = "tab" + (tab === "staff" ? " on" : "");
+  document.getElementById("panelParent").style.display = tab === "parent" ? "block" : "none";
+  document.getElementById("panelStaff").style.display = tab === "staff" ? "block" : "none";
+}
+
+function showReg() {
+  document.getElementById("signInView").style.display = "none";
+  document.getElementById("registerView").style.display = "block";
+}
+
+function showSignIn() {
+  document.getElementById("signInView").style.display = "block";
+  document.getElementById("registerView").style.display = "none";
+}
+
+function staffLogin() {
+  var user = gv("sl_user"), pass = gv("sl_pass");
+  var err = document.getElementById("sl_err");
+  var found = null;
+  for (var i = 0; i < ACCOUNTS.staff.length; i++) {
+    if (ACCOUNTS.staff[i].username === user && ACCOUNTS.staff[i].password === pass) {
+      found = ACCOUNTS.staff[i]; break;
+    }
+  }
+  if (!found) { err.style.display = "block"; return; }
+  err.style.display = "none";
+  USER = found; ROLE = "staff";
+  bootApp();
+}
+
+function parentLogin() {
+  var email = gv("pl_email"), pass = gv("pl_pass");
+  var err = document.getElementById("pl_err");
+  var found = null;
+  for (var i = 0; i < ACCOUNTS.parents.length; i++) {
+    if (ACCOUNTS.parents[i].email === email && ACCOUNTS.parents[i].password === pass) {
+      found = ACCOUNTS.parents[i]; break;
+    }
+  }
+  if (!found) { err.style.display = "block"; return; }
+  err.style.display = "none";
+  USER = found; ROLE = "parent";
+  bootApp();
+}
+
+function parentRegister() {
+  var first = gv("pr_first"), last = gv("pr_last");
+  var email = gv("pr_email"), phone = gv("pr_phone");
+  var pass = gv("pr_pass"), pass2 = gv("pr_pass2");
+  var err = document.getElementById("pr_err");
+  if (!first || !last || !email || !pass) {
+    err.textContent = "Please fill in all fields."; err.style.display = "block"; return;
+  }
+  if (pass.length < 6) {
+    err.textContent = "Password must be at least 6 characters."; err.style.display = "block"; return;
+  }
+  if (pass !== pass2) {
+    err.textContent = "Passwords do not match."; err.style.display = "block"; return;
+  }
+  for (var i = 0; i < ACCOUNTS.parents.length; i++) {
+    if (ACCOUNTS.parents[i].email === email) {
+      err.textContent = "An account with this email already exists."; err.style.display = "block"; return;
+    }
+  }
+  var u = { id: uid(), email: email, password: pass, first: first, last: last, phone: phone, children: [] };
+  ACCOUNTS.parents.push(u);
+  err.style.display = "none";
+  USER = u; ROLE = "parent";
+  bootApp();
+}
+
+function logout() {
+  USER = null; ROLE = null;
+  document.getElementById("loginScreen").classList.add("active");
+  document.getElementById("appScreen").classList.remove("active");
+  sv("pl_email", ""); sv("pl_pass", ""); sv("sl_user", ""); sv("sl_pass", "");
+  document.getElementById("pl_err").style.display = "none";
+  document.getElementById("sl_err").style.display = "none";
+}
+
+// ─── NAV ──────────────────────────────────────────────────────
+var SNAV = [
+  { id: "pg-dash", icon: "⬡",  label: "Home" },
+  { id: "pg-sess", icon: "📅", label: "Sessions" },
+  { id: "pg-att",  icon: "✔",  label: "Attendance" },
+  { id: "pg-play", icon: "👥", label: "Players" },
+  { id: "pg-pay",  icon: "💳", label: "Payments" }
+];
+var PNAV = [
+  { id: "pg-phome", icon: "🏠", label: "Home" },
+  { id: "pg-book",  icon: "📅", label: "Book" },
+  { id: "pg-hist",  icon: "📋", label: "History" }
+];
+
+function bootApp() {
+  document.getElementById("loginScreen").classList.remove("active");
+  document.getElementById("appScreen").classList.add("active");
+  var name = ROLE === "staff" ? USER.name : USER.first + " " + USER.last;
+  document.getElementById("hAv").textContent = initials(name);
+  document.getElementById("hName").textContent = ROLE === "staff" ? USER.name.split(" ")[0] : USER.first;
+  document.getElementById("hRole").textContent = ROLE === "staff" ? USER.role : "Parent Portal";
+  buildNav();
+  goPage(ROLE === "staff" ? "pg-dash" : "pg-phome");
+}
+
+function buildNav() {
+  var items = ROLE === "staff" ? SNAV : PNAV;
+  var nav = document.getElementById("bnav");
+  nav.innerHTML = "";
+  for (var i = 0; i < items.length; i++) {
+    (function(item) {
+      var b = document.createElement("button");
+      b.className = "bni" + (CUR === item.id ? " on" : "");
+      b.innerHTML = "<div class=\"bni-icon\">" + item.icon + "</div>" +
+        "<div class=\"bni-label\">" + item.label + "</div>" +
+        "<div class=\"bni-dot\"></div>";
+      b.onclick = function() { goPage(item.id); };
+      nav.appendChild(b);
+    })(items[i]);
+  }
+}
+
+function goPage(pg) {
+  CUR = pg;
+  var pwrap = document.getElementById("pwrap");
+  if (pwrap) pwrap.scrollTop = 0;
+  var pages = document.querySelectorAll(".page");
+  for (var i = 0; i < pages.length; i++) pages[i].classList.remove("on");
+  var el = document.getElementById(pg);
+  if (el) el.classList.add("on");
+  buildNav();
+  renderPage(pg);
+}
+
+function renderPage(pg) {
+  if      (pg === "pg-dash")  rDash();
+  else if (pg === "pg-sess")  rSessions();
+  else if (pg === "pg-att")   rAttPicker();
+  else if (pg === "pg-play")  renderPlayers("");
+  else if (pg === "pg-pay")   rPayments();
+  else if (pg === "pg-phome") rParentHome();
+  else if (pg === "pg-book")  startBook();
+  else if (pg === "pg-hist")  rHistory();
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────
+function mkStat(label, val, note, col) {
+  return "<div class=\"sc\"><div class=\"slabel\">" + label + "</div>" +
+    "<div class=\"sval\"" + (col ? " style=\"color:" + col + "\"" : "") + ">" + val + "</div>" +
+    (note ? "<div class=\"snote\">" + note + "</div>" : "") + "</div>";
+}
+
+function mkRow(av, title, sub, right) {
+  return "<div class=\"lrow\">" +
+    "<div class=\"av av-s\">" + av + "</div>" +
+    "<div class=\"lmain\"><div class=\"ltitle\">" + title + "</div><div class=\"lsub\">" + sub + "</div></div>" +
+    (right ? "<div class=\"lright\">" + right + "</div>" : "") + "</div>";
+}
+
+// ─── STAFF: DASHBOARD ─────────────────────────────────────────
+function rDash() {
+  document.getElementById("dashsub").textContent = "Welcome back, " + USER.name.split(" ")[0];
+  var t = today();
+  var up = DB.sessions.filter(function(s) { return s.date >= t; });
+  var active = DB.players.filter(function(p) { return p.status === "active"; }).length;
+  var rev = DB.payments.reduce(function(a, p) { return p.status === "paid" ? a + p.amount : a; }, 0);
+  var av = Object.values(DB.attendance);
+  var ar = av.length ? Math.round(av.filter(function(v) { return v === "present"; }).length / av.length * 100) : 0;
+  document.getElementById("dStats").innerHTML =
+    mkStat("Players", DB.players.length, active + " active") +
+    mkStat("Upcoming", up.length, "sessions") +
+    mkStat("Revenue", gbp(rev), DB.payments.length + " paid", "var(--green)") +
+    mkStat("Attendance", ar + "%", "avg");
+  var sorted = up.slice().sort(function(a, b) { return a.date.localeCompare(b.date); });
+  document.getElementById("dUp").innerHTML = sorted.length ?
+    sorted.slice(0, 4).map(function(s) {
+      return mkRow(initials(s.name), s.name, fmtDate(s.date) + " · " + fmtTime(s.time),
+        "<span class=\"badge b-cy\">" + (s.bookings || []).length + "/" + s.capacity + "</span>");
+    }).join("") :
+    "<div class=\"empty\"><div class=\"ei\">📅</div>No upcoming sessions</div>";
+  var recent = DB.payments.slice().reverse().slice(0, 4);
+  document.getElementById("dPay").innerHTML = recent.length ?
+    recent.map(function(p) {
+      return mkRow("💳", p.childName, p.sessionName, "<div style=\"font-weight:700;color:var(--green)\">" + gbp(p.amount) + "</div>");
+    }).join("") :
+    "<div class=\"empty\"><div class=\"ei\">💳</div>No payments yet</div>";
+}
+
+// ─── STAFF: SESSIONS ──────────────────────────────────────────
+function rSessions() {
+  var el = document.getElementById("sessList");
+  if (!DB.sessions.length) { el.innerHTML = "<div class=\"empty\"><div class=\"ei\">📅</div>No sessions yet</div>"; return; }
+  var sorted = DB.sessions.slice().sort(function(a, b) { return a.date.localeCompare(b.date); });
+  el.innerHTML = sorted.map(function(s) {
+    var past = s.date < today();
+    return "<div class=\"card\">" +
+      "<div style=\"display:flex;align-items:flex-start;justify-content:space-between;gap:10px\">" +
+      "<div style=\"flex:1;min-width:0\">" +
+      "<div style=\"font-weight:700;font-size:15px;margin-bottom:3px\">" + s.name + "</div>" +
+      "<div style=\"font-size:12px;color:var(--muted);margin-bottom:6px\">" + fmtDate(s.date) + " · " + fmtTime(s.time) + " · " + s.location + "</div>" +
+      "<div style=\"display:flex;gap:6px;flex-wrap:wrap\">" +
+      "<span class=\"badge b-cy\">" + s.ageGroup + "</span>" +
+      "<span class=\"tag\">" + s.type + "</span>" +
+      "<span style=\"font-size:12px;color:var(--green);font-weight:700\">" + gbp(s.price || 0) + "</span>" +
+      "</div>" +
+      (s.notes ? "<div style=\"font-size:12px;color:var(--muted);margin-top:5px\">" + s.notes + "</div>" : "") +
+      "</div>" +
+      "<div style=\"text-align:right;flex-shrink:0\">" +
+      "<div style=\"font-weight:800;font-size:22px;color:var(--cyan)\">" + (s.bookings || []).length +
+      "<span style=\"font-size:13px;color:var(--muted)\">/" + s.capacity + "</span></div>" +
+      "<div style=\"font-size:11px;color:var(--muted)\">booked</div></div></div>" +
+      (!past ?
+        "<div style=\"display:flex;gap:8px;margin-top:12px\">" +
+        "<button class=\"btn btn-g btn-sm\" style=\"flex:1\" onclick=\"editSess('" + s.id + "')\">Edit</button>" +
+        "<button class=\"btn btn-d btn-sm\" style=\"flex:1\" onclick=\"delSess('" + s.id + "')\">Delete</button>" +
+        "</div>" :
+        "<div style=\"margin-top:8px\"><span class=\"badge b-gy\">Past</span></div>") +
+      "</div>";
+  }).join("");
+}
+
+function editSess(id) {
+  var s = findById(DB.sessions, id); if (!s) return;
+  document.getElementById("shSessTitle").textContent = "Edit Session";
+  sv("eSId", s.id); sv("sN", s.name); sv("sTy", s.type);
+  sv("sDt", s.date); sv("sTm", s.time); sv("sLo", s.location);
+  sv("sAg", s.ageGroup); sv("sCa", s.capacity); sv("sPr", s.price || ""); sv("sNo", s.notes);
+  openSheet("shSess");
+}
+
+function saveSession() {
+  var eid = gv("eSId");
+  var s = {
+    id: eid || uid(), name: gv("sN"), type: gv("sTy"), date: gv("sDt"),
+    time: gv("sTm"), location: gv("sLo"), ageGroup: gv("sAg"),
+    capacity: parseInt(gv("sCa")) || 20, price: parseFloat(gv("sPr")) || 0,
+    notes: gv("sNo"), bookings: []
+  };
+  if (!s.name || !s.date) { toast("Name and date are required", "err"); return; }
+  if (eid) {
+    for (var i = 0; i < DB.sessions.length; i++) {
+      if (DB.sessions[i].id === eid) { s.bookings = DB.sessions[i].bookings; DB.sessions[i] = s; break; }
+    }
+  } else { DB.sessions.push(s); }
+  closeSheet("shSess"); sv("eSId", "");
+  document.getElementById("shSessTitle").textContent = "New Session";
+  toast(eid ? "Session updated" : "Session created");
+  rSessions();
+}
+
+function delSess(id) {
+  if (!confirm("Delete this session?")) return;
+  DB.sessions = DB.sessions.filter(function(s) { return s.id !== id; });
+  toast("Session deleted"); rSessions();
+}
+
+// ─── STAFF: ATTENDANCE ────────────────────────────────────────
+function rAttPicker() {
+  var pk = document.getElementById("attPick");
+  pk.innerHTML = "<option value=\"\">Choose a session...</option>";
+  var sorted = DB.sessions.slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
+  for (var i = 0; i < sorted.length; i++) {
+    var opt = document.createElement("option");
+    opt.value = sorted[i].id;
+    opt.textContent = sorted[i].name + " — " + fmtDate(sorted[i].date);
+    pk.appendChild(opt);
+  }
+  document.getElementById("attSheet").innerHTML = "<div class=\"empty\"><div class=\"ei\">✔</div>Select a session above</div>";
+}
+
+function renderAttSheet() {
+  var sid = gv("attPick");
+  var el = document.getElementById("attSheet");
+  if (!sid) { el.innerHTML = ""; return; }
+  var sess = findById(DB.sessions, sid); if (!sess) return;
+  var rows = DB.players.map(function(p) {
+    var k = sid + "_" + p.id;
+    var st = DB.attendance[k] || "";
+    var booked = (sess.bookings || []).indexOf(p.id) > -1;
+    return "<div style=\"display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)\">" +
+      "<div class=\"av av-s\">" + initials(p.first + " " + p.last) + "</div>" +
+      "<div style=\"flex:1\"><div style=\"font-weight:600;font-size:14px\">" + p.first + " " + p.last + "</div>" +
+      "<div style=\"font-size:12px;color:var(--muted)\">" + p.ageGroup +
+      (booked ? " · <span class=\"badge b-cy\">Booked</span>" : "") + "</div></div>" +
+      "<div class=\"attog\">" +
+      "<button class=\"atopt " + (st === "present" ? "present" : "") + "\" onclick=\"markA('" + sid + "','" + p.id + "','present',this)\">P</button>" +
+      "<button class=\"atopt " + (st === "late" ? "late" : "") + "\" onclick=\"markA('" + sid + "','" + p.id + "','late',this)\">L</button>" +
+      "<button class=\"atopt " + (st === "absent" ? "absent" : "") + "\" onclick=\"markA('" + sid + "','" + p.id + "','absent',this)\">A</button>" +
+      "</div></div>";
+  }).join("");
+  el.innerHTML = "<div class=\"card\">" +
+    "<div style=\"font-weight:700;font-size:15px;margin-bottom:2px\">" + sess.name + "</div>" +
+    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:14px\">" + fmtDate(sess.date) + " · " + fmtTime(sess.time) + " · " + sess.location + "</div>" +
+    rows +
+    "<button class=\"btn btn-s btn-w\" style=\"margin-top:14px\" onclick=\"toast('Attendance saved')\">Save Attendance</button></div>";
+}
+
+function markA(sid, pid, status, btn) {
+  var k = sid + "_" + pid;
+  var btns = btn.parentElement.querySelectorAll(".atopt");
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove("present", "late", "absent");
+  if (DB.attendance[k] === status) { delete DB.attendance[k]; }
+  else { DB.attendance[k] = status; btn.classList.add(status); }
+}
+
+// ─── STAFF: PLAYERS ───────────────────────────────────────────
+function renderPlayers(q) {
+  q = q || "";
+  var list = DB.players.filter(function(p) {
+    if (!q) return true;
+    return (p.first + " " + p.last + " " + p.parent).toLowerCase().indexOf(q.toLowerCase()) > -1;
+  });
+  var el = document.getElementById("playerList");
+  if (!list.length) { el.innerHTML = "<div class=\"empty\"><div class=\"ei\">👥</div>No players found</div>"; return; }
+  el.innerHTML = list.map(function(p) {
+    var enrolled = DB.sessions.filter(function(s) { return (s.bookings || []).indexOf(p.id) > -1; });
+    var aks = Object.keys(DB.attendance).filter(function(k) { return k.split("_")[1] === p.id; });
+    var pres = aks.filter(function(k) { return DB.attendance[k] === "present"; }).length;
+    var ar = aks.length ? Math.round(pres / aks.length * 100) : 0;
+    return "<div class=\"pcard\" onclick=\"toggleDetail('" + p.id + "')\">" +
+      "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:10px\">" +
+      "<div class=\"av av-m\">" + initials(p.first + " " + p.last) + "</div>" +
+      "<div style=\"flex:1\"><div style=\"font-weight:700;font-size:15px\">" + p.first + " " + p.last + "</div>" +
+      "<div style=\"font-size:12px;color:var(--muted)\">" + p.ageGroup + " · Age " + calcAge(p.dob) + "</div></div>" +
+      sbadge(p.status) + "</div>" +
+      "<div style=\"font-size:12px;color:var(--text);margin-bottom:3px\">👤 " + p.parent + " · 📞 " + (p.phone || "—") + "</div>" +
+      (p.medical ? "<div style=\"font-size:12px;color:var(--amber);margin-top:4px\">⚠ " + p.medical + "</div>" : "") +
+      "<div id=\"pd_" + p.id + "\" style=\"display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)\">" +
+      "<div class=\"dr\"><div class=\"dk\">Email</div><div class=\"dv\">" + (p.email || "—") + "</div></div>" +
+      "<div class=\"dr\"><div class=\"dk\">Attendance</div><div class=\"dv\" style=\"color:var(--cyan);font-weight:700\">" + ar + "%</div></div>" +
+      "<div class=\"dr\"><div class=\"dk\">Sessions</div><div class=\"dv\">" +
+      (enrolled.length ? enrolled.map(function(s) { return s.name; }).join(", ") : "None") + "</div></div>" +
+      "<div style=\"display:flex;gap:8px;margin-top:12px\">" +
+      "<button class=\"btn btn-g btn-sm\" style=\"flex:1\" onclick=\"event.stopPropagation();editPlayer('" + p.id + "')\">Edit</button>" +
+      "<button class=\"btn btn-d btn-sm\" style=\"flex:1\" onclick=\"event.stopPropagation();delPlayer('" + p.id + "')\">Remove</button>" +
+      "</div></div></div>";
+  }).join("");
+}
+
+function toggleDetail(id) {
+  var el = document.getElementById("pd_" + id);
+  if (el) el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+function editPlayer(id) {
+  var p = findById(DB.players, id); if (!p) return;
+  document.getElementById("shPlayTitle").textContent = "Edit Player";
+  sv("ePId", p.id); sv("pFi", p.first); sv("pLa", p.last); sv("pDb", p.dob);
+  sv("pAg", p.ageGroup); sv("pPa", p.parent); sv("pEm", p.email); sv("pPh", p.phone);
+  sv("pMe", p.medical); sv("pSt", p.status);
+  openSheet("shPlay");
+}
+
+function savePlayer() {
+  var eid = gv("ePId");
+  var p = {
+    id: eid || uid(), first: gv("pFi"), last: gv("pLa"), dob: gv("pDb"),
+    ageGroup: gv("pAg"), parent: gv("pPa"), email: gv("pEm"),
+    phone: gv("pPh"), medical: gv("pMe"), status: gv("pSt")
+  };
+  if (!p.first || !p.last) { toast("Name required", "err"); return; }
+  if (eid) {
+    for (var i = 0; i < DB.players.length; i++) {
+      if (DB.players[i].id === eid) { DB.players[i] = p; break; }
+    }
+  } else { DB.players.push(p); }
+  closeSheet("shPlay"); sv("ePId", "");
+  document.getElementById("shPlayTitle").textContent = "Add Player";
+  toast(eid ? "Player updated" : "Player added");
+  renderPlayers("");
+}
+
+function delPlayer(id) {
+  if (!confirm("Remove this player?")) return;
+  DB.players = DB.players.filter(function(p) { return p.id !== id; });
+  toast("Player removed"); renderPlayers("");
+}
+
+// ─── STAFF: PAYMENTS ──────────────────────────────────────────
+function rPayments() {
+  var paid = DB.payments.filter(function(x) { return x.status === "paid"; });
+  var rev = paid.reduce(function(a, x) { return a + x.amount; }, 0);
+  document.getElementById("payStats").innerHTML =
+    mkStat("Revenue", gbp(rev), "total", "var(--green)") +
+    mkStat("Transactions", paid.length, "") +
+    mkStat("Avg Value", gbp(paid.length ? rev / paid.length : 0), "") +
+    mkStat("Pending", DB.payments.filter(function(x) { return x.status === "pending"; }).length, "", "var(--amber)");
+  var el = document.getElementById("payList");
+  el.innerHTML = DB.payments.length ?
+    DB.payments.slice().reverse().map(function(p) {
+      return "<div class=\"paycard\">" +
+        "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\">" +
+        "<div style=\"font-weight:600;font-size:14px\">" + p.childName + "</div>" +
+        "<div style=\"font-weight:800;font-size:16px;color:var(--green)\">" + gbp(p.amount) + "</div></div>" +
+        "<div style=\"font-size:12px;color:var(--muted)\">" + p.sessionName + " · " + fmtDate(p.date) + "</div>" +
+        "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-top:6px\">" +
+        "<span style=\"font-family:monospace;font-size:11px;color:var(--muted)\">" + p.ref.slice(0, 22) + "</span>" +
+        "<span class=\"badge b-gr\">" + p.status + "</span></div></div>";
+    }).join("") :
+    "<div class=\"empty\"><div class=\"ei\">💳</div>No payments yet</div>";
+}
+
+// ─── PARENT: HOME ─────────────────────────────────────────────
+function rParentHome() {
+  document.getElementById("pWelcome").textContent = "Hello, " + USER.first + "!";
+  var ch = USER.children || [];
+  var t = today();
+  var mine = DB.payments.filter(function(p) { return p.parentEmail === USER.email; });
+  var upcoming = mine.filter(function(b) {
+    var s = findById(DB.sessions, b.sessionId);
+    return s && s.date >= t;
+  });
+  var spent = mine.reduce(function(a, x) { return a + x.amount; }, 0);
+  document.getElementById("pStats").innerHTML =
+    mkStat("Children", ch.length, "") +
+    mkStat("Upcoming", upcoming.length, "sessions") +
+    mkStat("Bookings", mine.length, "total") +
+    mkStat("Spent", gbp(spent), "", "var(--green)");
+  var mc = document.getElementById("myKids");
+  mc.innerHTML = ch.length ?
+    ch.map(function(c) {
+      return "<div class=\"lrow\">" +
+        "<div class=\"av av-s\">" + initials(c.first + " " + c.last) + "</div>" +
+        "<div class=\"lmain\"><div class=\"ltitle\">" + c.first + " " + c.last + "</div>" +
+        "<div class=\"lsub\">" + c.ageGroup + " · Age " + calcAge(c.dob) +
+        (c.medical ? " · ⚠ " + c.medical : "") + "</div></div>" +
+        "<button class=\"btn btn-d btn-sm\" onclick=\"rmKid('" + c.id + "')\">Remove</button></div>";
+    }).join("") :
+    "<div class=\"empty\" style=\"padding:20px\"><div class=\"ei\">👦</div>No children added yet</div>";
+  var mb = document.getElementById("myBks");
+  mb.innerHTML = mine.length ?
+    mine.slice().reverse().slice(0, 5).map(function(b) {
+      var s = findById(DB.sessions, b.sessionId);
+      var past = s && s.date < t;
+      return "<div class=\"lrow\">" +
+        "<div class=\"av av-s\">⚽</div>" +
+        "<div class=\"lmain\"><div class=\"ltitle\">" + b.childName + "</div>" +
+        "<div class=\"lsub\">" + b.sessionName + (s ? " · " + fmtDate(s.date) : "") + "</div></div>" +
+        "<div class=\"lright\"><div style=\"font-weight:700;color:var(--green);font-size:13px\">" + gbp(b.amount) + "</div>" +
+        (past ? "<span class=\"badge b-gy\">Past</span>" : "<span class=\"badge b-gr\">Upcoming</span>") +
+        "</div></div>";
+    }).join("") :
+    "<div class=\"empty\" style=\"padding:20px\"><div class=\"ei\">📋</div>No bookings yet<br>" +
+    "<button class=\"btn btn-p btn-sm\" onclick=\"goPage('pg-book')\" style=\"margin-top:10px\">Book Now</button></div>";
+}
+
+function saveChild() {
+  var c = { id: uid(), first: gv("cFi"), last: gv("cLa"), dob: gv("cDb"), ageGroup: gv("cAg"), medical: gv("cMe") };
+  if (!c.first || !c.last) { toast("Name required", "err"); return; }
+  if (!USER.children) USER.children = [];
+  USER.children.push(c);
+  closeSheet("shChild");
+  toast(c.first + " added");
+  rParentHome();
+}
+
+function rmKid(id) {
+  if (!confirm("Remove this child?")) return;
+  USER.children = USER.children.filter(function(c) { return c.id !== id; });
+  toast("Removed"); rParentHome();
+}
+
+// ─── PARENT: HISTORY ──────────────────────────────────────────
+function rHistory() {
+  var mine = DB.payments.filter(function(p) { return p.parentEmail === USER.email; });
+  var t = today();
+  var el = document.getElementById("histList");
+  el.innerHTML = mine.length ?
+    mine.slice().reverse().map(function(b) {
+      var s = findById(DB.sessions, b.sessionId);
+      var past = s && s.date < t;
+      return "<div class=\"card\">" +
+        "<div style=\"display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px\">" +
+        "<div style=\"font-weight:700;font-size:15px\">" + b.sessionName + "</div>" +
+        "<div style=\"font-weight:800;font-size:17px;color:var(--green)\">" + gbp(b.amount) + "</div></div>" +
+        "<div style=\"font-size:13px;color:var(--muted);margin-bottom:4px\">" +
+        b.childName + " · " + (s ? fmtDate(s.date) : "—") + "</div>" +
+        "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-top:8px\">" +
+        "<span style=\"font-family:monospace;font-size:11px;color:var(--muted)\">" + b.ref.slice(0, 22) + "</span>" +
+        (past ? "<span class=\"badge b-gy\">Past</span>" : "<span class=\"badge b-gr\">Upcoming</span>") +
+        "</div></div>";
+    }).join("") :
+    "<div class=\"empty\"><div class=\"ei\">📋</div>No bookings yet<br>" +
+    "<button class=\"btn btn-p btn-sm\" onclick=\"goPage('pg-book')\" style=\"margin-top:12px\">Book a Session</button></div>";
+}
+
+// ─── BOOKING FLOW ─────────────────────────────────────────────
+function startBook() {
+  if (!(USER.children && USER.children.length)) {
+    document.getElementById("bookContent").innerHTML =
+      "<div class=\"card\"><div class=\"empty\"><div class=\"ei\">👦</div>" +
+      "Please add a child to your account before booking.<br>" +
+      "<button class=\"btn btn-p btn-sm\" onclick=\"openSheet('shChild')\" style=\"margin-top:12px\">Add a Child</button></div></div>";
+    return;
+  }
+  BF = { step: 1, sel: [], child: {}, parent: { first: USER.first, last: USER.last, email: USER.email, phone: USER.phone || "" }, consents: {} };
+  showStep(1);
+}
+
+function stepBar(n) {
+  var html = "<div class=\"stepbar\">";
+  for (var i = 0; i < STEPS.length; i++) {
+    var s = i + 1;
+    var nc = s < n ? "done" : s === n ? "active" : "";
+    var lc = s < n ? "done" : s === n ? "active" : "";
+    html += "<div class=\"sitem\">" +
+      "<div class=\"snum " + nc + "\">" + (s < n ? "✓" : s) + "</div>" +
+      "<div class=\"slbl " + lc + "\">" + STEPS[i] + "</div></div>";
+    if (i < STEPS.length - 1) html += "<div class=\"sconn " + (s < n ? "done" : "") + "\"></div>";
+  }
+  return html + "</div>";
+}
+
+function showStep(n) {
+  BF.step = n;
+  var html = stepBar(n);
+  if (n === 1) html += step1();
+  else if (n === 2) html += step2();
+  else if (n === 3) html += step3();
+  else if (n === 4) html += step4();
+  else if (n === 5) html += step5();
+  document.getElementById("bookContent").innerHTML = html;
+  var pw = document.getElementById("pwrap");
+  if (pw) pw.scrollTop = 0;
+}
+
+function step1() {
+  var t = today();
+  var up = DB.sessions.filter(function(s) { return s.date >= t; }).sort(function(a, b) { return a.date.localeCompare(b.date); });
+  if (!up.length) return "<div class=\"card\"><div class=\"empty\"><div class=\"ei\">📅</div>No upcoming sessions available.</div></div>";
+  var html = up.map(function(s) {
+    var booked = (s.bookings || []).length;
+    var full = booked >= s.capacity;
+    var spots = s.capacity - booked;
+    var sel = BF.sel.indexOf(s.id) > -1;
+    var cls = "scard" + (sel ? " sel" : "") + (full ? " full" : "");
+    var onclick = full ? "" : " onclick=\"toggleSess('" + s.id + "')\"";
+    return "<div class=\"" + cls + "\" id=\"sp_" + s.id + "\"" + onclick + ">" +
+      "<div class=\"scheck\">" + (sel ? "✓" : "") + "</div>" +
+      "<div style=\"flex:1;min-width:0\">" +
+      "<div style=\"font-weight:700;font-size:14px;margin-bottom:3px\">" + s.name + "</div>" +
+      "<div style=\"font-size:12px;color:var(--muted);margin-bottom:5px\">" + fmtDate(s.date) + " · " + fmtTime(s.time) + "<br>📍 " + s.location + "</div>" +
+      "<div style=\"display:flex;gap:5px;flex-wrap:wrap\"><span class=\"badge b-cy\">" + s.ageGroup + "</span><span class=\"tag\">" + s.type + "</span></div>" +
+      (s.notes ? "<div style=\"font-size:12px;color:var(--muted);margin-top:5px\">" + s.notes + "</div>" : "") +
+      "</div>" +
+      "<div style=\"text-align:right;flex-shrink:0\">" +
+      "<div style=\"font-weight:800;font-size:22px;color:var(--cyan)\">" + gbp(s.price) + "</div>" +
+      "<div style=\"font-size:11px;color:" + (full ? "var(--red)" : "var(--green)") + "\">" + (full ? "Full" : spots + " left") + "</div>" +
+      "</div></div>";
+  }).join("");
+  return html +
+    "<div id=\"s1total\"></div>" +
+    "<button class=\"btn btn-p btn-w\" style=\"margin-top:8px\" onclick=\"step1Next()\">Continue</button>";
+}
+
+function toggleSess(id) {
+  var idx = BF.sel.indexOf(id);
+  if (idx > -1) BF.sel.splice(idx, 1); else BF.sel.push(id);
+  var card = document.getElementById("sp_" + id);
+  if (card) {
+    var sel = BF.sel.indexOf(id) > -1;
+    card.className = "scard" + (sel ? " sel" : "");
+    var chk = card.querySelector(".scheck");
+    if (chk) chk.textContent = sel ? "✓" : "";
+  }
+  var total = 0;
+  for (var i = 0; i < BF.sel.length; i++) {
+    var s = findById(DB.sessions, BF.sel[i]);
+    if (s) total += s.price || 0;
+  }
+  var el = document.getElementById("s1total");
+  if (el) {
+    el.innerHTML = BF.sel.length ?
+      "<div style=\"background:rgba(0,194,224,.07);border:1px solid var(--border);border-radius:9px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin:10px 0\">" +
+      "<span style=\"font-size:13px\">" + BF.sel.length + " session" + (BF.sel.length > 1 ? "s" : "") + " selected</span>" +
+      "<span style=\"font-weight:800;font-size:22px;color:var(--cyan)\">" + gbp(total) + "</span></div>" : "";
+  }
+}
+
+function step1Next() {
+  if (!BF.sel.length) { toast("Please select at least one session", "err"); return; }
+  showStep(2);
+}
+
+function step2() {
+  var d = BF.child;
+  var ages = ["U7s","U8s","U9s","U10s","U11s","U12s","U13s","U14s"];
+  var ageOpts = ages.map(function(g) { return "<option" + (d.ageGroup === g ? " selected" : "") + ">" + g + "</option>"; }).join("");
+  var expOpts = ["None – complete beginner","Some – played at school","Regular – weekly training","Experienced – club football"]
+    .map(function(x) { return "<option" + (d.experience === x ? " selected" : "") + ">" + x + "</option>"; }).join("");
+  var medOpts = ["No","Yes – inhaler","Yes – epipen","Yes – other (specify above)"]
+    .map(function(x) { return "<option" + (d.meds === x ? " selected" : "") + ">" + x + "</option>"; }).join("");
+  var sel = "<select style=\"width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;\">";
+  return "<div class=\"card\"><div class=\"ctitle\">Child's Details</div>" +
+    "<div class=\"fi2\">" +
+    "<div class=\"fi\"><label>First Name <span style=\"color:var(--red)\">*</span></label><input id=\"b_cFi\" value=\"" + (d.first || "") + "\"></div>" +
+    "<div class=\"fi\"><label>Last Name <span style=\"color:var(--red)\">*</span></label><input id=\"b_cLa\" value=\"" + (d.last || "") + "\"></div>" +
+    "</div>" +
+    "<div class=\"fi2\">" +
+    "<div class=\"fi\"><label>Date of Birth <span style=\"color:var(--red)\">*</span></label><input type=\"date\" id=\"b_cDb\" value=\"" + (d.dob || "") + "\"></div>" +
+    "<div class=\"fi\"><label>Age Group <span style=\"color:var(--red)\">*</span></label>" + sel + ageOpts + "</select></div>" +
+    "</div>" +
+    "<div class=\"fi\"><label>School</label><input id=\"b_cSch\" placeholder=\"School name (optional)\" value=\"" + (d.school || "") + "\"></div>" +
+    "<div class=\"fi\"><label>Football Experience</label>" + sel + expOpts + "</select></div>" +
+    "<div class=\"secdiv\">Medical Information</div>" +
+    "<div class=\"fi\"><label>Medical Conditions / Allergies <span style=\"color:var(--red)\">*</span></label>" +
+    "<textarea id=\"b_cMed\" style=\"min-height:80px\" placeholder=\"List any conditions, allergies or medications. Write None if none apply.\">" + (d.medical || "") + "</textarea></div>" +
+    "<div class=\"fi\"><label>Does your child carry medication?</label>" + sel + medOpts + "</select></div>" +
+    "<div style=\"display:flex;gap:10px;margin-top:8px\">" +
+    "<button class=\"btn btn-g\" style=\"flex:1\" onclick=\"showStep(1)\">← Back</button>" +
+    "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step2Next()\">Continue</button></div></div>";
+}
+
+function step2Next() {
+  var first = gv("b_cFi"), last = gv("b_cLa"), dob = gv("b_cDb");
+  if (!first || !last || !dob) { toast("Please fill in required fields", "err"); return; }
+  var ags = document.querySelectorAll("#bookContent select");
+  BF.child = {
+    first: first, last: last, dob: dob,
+    ageGroup: ags[0] ? ags[0].value : "U10s",
+    school: gv("b_cSch"),
+    experience: ags[1] ? ags[1].value : "",
+    medical: gv("b_cMed"),
+    meds: ags[2] ? ags[2].value : "No"
+  };
+  showStep(3);
+}
+
+function step3() {
+  var d = BF.parent;
+  var relOpts = ["Parent","Guardian","Grandparent","Other"]
+    .map(function(x) { return "<option>" + x + "</option>"; }).join("");
+  var sel = "<select style=\"width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;\">";
+  return "<div class=\"card\"><div class=\"ctitle\">Parent / Guardian Details</div>" +
+    "<div class=\"fi2\">" +
+    "<div class=\"fi\"><label>First Name <span style=\"color:var(--red)\">*</span></label><input id=\"b_pFi\" value=\"" + (d.first || "") + "\"></div>" +
+    "<div class=\"fi\"><label>Last Name <span style=\"color:var(--red)\">*</span></label><input id=\"b_pLa\" value=\"" + (d.last || "") + "\"></div>" +
+    "</div>" +
+    "<div class=\"fi\"><label>Email <span style=\"color:var(--red)\">*</span></label><input type=\"email\" id=\"b_pEm\" value=\"" + (d.email || "") + "\"></div>" +
+    "<div class=\"fi\"><label>Mobile <span style=\"color:var(--red)\">*</span></label><input type=\"tel\" id=\"b_pPh\" value=\"" + (d.phone || "") + "\"></div>" +
+    "<div class=\"fi\"><label>Relationship to child</label>" + sel + relOpts + "</select></div>" +
+    "<div class=\"secdiv\">Emergency Contact (if different)</div>" +
+    "<div class=\"fi2\">" +
+    "<div class=\"fi\"><label>Name</label><input id=\"b_ecN\" value=\"" + (d.ecName || "") + "\"></div>" +
+    "<div class=\"fi\"><label>Phone</label><input type=\"tel\" id=\"b_ecP\" value=\"" + (d.ecPhone || "") + "\"></div>" +
+    "</div>" +
+    "<div style=\"display:flex;gap:10px;margin-top:8px\">" +
+    "<button class=\"btn btn-g\" style=\"flex:1\" onclick=\"showStep(2)\">← Back</button>" +
+    "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step3Next()\">Continue</button></div></div>";
+}
+
+function step3Next() {
+  var first = gv("b_pFi"), last = gv("b_pLa"), email = gv("b_pEm"), phone = gv("b_pPh");
+  if (!first || !last || !email || !phone) { toast("Please fill in required fields", "err"); return; }
+  var sel = document.querySelectorAll("#bookContent select");
+  BF.parent = {
+    first: first, last: last, email: email, phone: phone,
+    relationship: sel[0] ? sel[0].value : "Parent",
+    ecName: gv("b_ecN"), ecPhone: gv("b_ecP")
+  };
+  showStep(4);
+}
+
+function step4() {
+  var c = BF.consents;
+  var items = [
+    { id: "c_t", label: "I agree to NSC Performance's <strong>Terms & Conditions</strong> and confirm all information provided is accurate.", req: true },
+    { id: "c_m", label: "I confirm all relevant medical information has been disclosed and consent to emergency medical treatment if required.", req: true },
+    { id: "c_l", label: "I accept that NSC Performance takes all reasonable precautions but cannot accept liability for injury during normal participation.", req: true },
+    { id: "c_c", label: "I agree my child will adhere to the NSC Performance <strong>Code of Conduct</strong>.", req: true },
+    { id: "c_p", label: "I consent to NSC Performance photographing/filming my child for use in marketing and social media.", req: false },
+    { id: "c_u", label: "I would like to receive news and updates from NSC Performance by email.", req: false }
+  ];
+  return "<div class=\"card\"><div class=\"ctitle\">Consents & Agreements</div>" +
+    "<div style=\"font-size:13px;color:var(--muted);margin-bottom:14px\">Items marked * are required to participate.</div>" +
+    items.map(function(item) {
+      return "<div class=\"ci\">" +
+        "<input type=\"checkbox\" id=\"" + item.id + "\"" + (c[item.id] ? " checked" : "") + ">" +
+        "<label class=\"clabel\" for=\"" + item.id + "\">" +
+        (item.req ? "<span class=\"req\">*</span>" : "") + item.label + "</label></div>";
+    }).join("") +
+    "<div style=\"background:rgba(0,194,224,.05);border:1px solid var(--border);border-radius:9px;padding:12px;margin-top:10px;font-size:12px;color:var(--muted)\">" +
+    "Your data is stored securely and never sold to third parties. Email info@nscperformance.co.uk to request deletion at any time.</div>" +
+    "<div style=\"display:flex;gap:10px;margin-top:14px\">" +
+    "<button class=\"btn btn-g\" style=\"flex:1\" onclick=\"showStep(3)\">← Back</button>" +
+    "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step4Next()\">Review & Pay</button></div></div>";
+}
+
+function step4Next() {
+  var req = ["c_t","c_m","c_l","c_c"];
+  for (var i = 0; i < req.length; i++) {
+    var el = document.getElementById(req[i]);
+    if (!el || !el.checked) { toast("Please agree to all required consents", "err"); return; }
+  }
+  BF.consents = { c_t: true, c_m: true, c_l: true, c_c: true,
+    c_p: document.getElementById("c_p").checked,
+    c_u: document.getElementById("c_u").checked };
+  showStep(5);
+}
+
+function step5() {
+  var total = 0;
+  var lines = "";
+  for (var i = 0; i < BF.sel.length; i++) {
+    var s = findById(DB.sessions, BF.sel[i]);
+    if (s) {
+      total += s.price || 0;
+      lines += "<div class=\"oline\">" +
+        "<div><div style=\"font-weight:600;font-size:13px\">" + s.name + "</div>" +
+        "<div style=\"font-size:12px;color:var(--muted)\">" + fmtDate(s.date) + " · " + fmtTime(s.time) + "</div></div>" +
+        "<div style=\"font-weight:700;color:var(--cyan)\">" + gbp(s.price || 0) + "</div></div>";
+    }
+  }
+  var cd = BF.child, pd = BF.parent;
+  var paySection;
+  if (total === 0) {
+    paySection = "<div style=\"text-align:center;padding:16px\">" +
+      "<div style=\"font-size:40px;margin-bottom:8px\">🎉</div>" +
+      "<div style=\"font-weight:700;margin-bottom:4px\">No payment required</div>" +
+      "<div style=\"font-size:13px;color:var(--muted)\">These sessions are free to attend.</div></div>" +
+      "<button class=\"btn btn-p btn-w\" onclick=\"completeFree()\">✓ Confirm Booking</button>";
+  } else {
+    paySection =
+      "<div style=\"background:rgba(0,194,224,.05);border:1px solid var(--border);border-radius:9px;padding:14px;margin-bottom:14px\">" +
+      "<div style=\"display:flex;align-items:center;gap:10px;margin-bottom:14px\">" +
+      "<span style=\"font-size:22px\">🔒</span>" +
+      "<div><div style=\"font-size:13px;font-weight:600\">Secure payment via Stripe</div>" +
+      "<div style=\"font-size:11px;color:var(--muted)\">256-bit SSL · PCI DSS compliant</div></div></div>" +
+      "<div class=\"fi\"><label>Cardholder Name</label><input id=\"cardName\" placeholder=\"Name on card\"></div>" +
+      "<div class=\"fi\"><label>Card Number</label><div class=\"sfield\"><input id=\"cardNum\" placeholder=\"4242 4242 4242 4242\" maxlength=\"19\" oninput=\"fmtCard(this)\" inputmode=\"numeric\"></div></div>" +
+      "<div class=\"fi2\">" +
+      "<div class=\"fi\"><label>Expiry</label><div class=\"sfield\"><input id=\"cardExp\" placeholder=\"MM / YY\" maxlength=\"7\" oninput=\"fmtExp(this)\" inputmode=\"numeric\"></div></div>" +
+      "<div class=\"fi\"><label>CVC</label><div class=\"sfield\"><input id=\"cardCvc\" placeholder=\"123\" maxlength=\"3\" inputmode=\"numeric\"></div></div>" +
+      "</div>" +
+      "<div style=\"font-size:11px;color:var(--muted);margin-top:6px\">Test card: 4242 4242 4242 4242 · Any future date · Any 3 digits</div></div>" +
+      "<button class=\"btn btn-p btn-w\" id=\"payBtn\" onclick=\"processPayment(" + total + ")\">🔒 Pay " + gbp(total) + "</button>";
+  }
+  return "<div class=\"card\" style=\"margin-bottom:12px\">" +
+    "<div class=\"ctitle\">Order Summary</div>" + lines +
+    "<div class=\"ototal\"><span style=\"font-weight:700\">Total</span>" +
+    "<span style=\"font-weight:800;font-size:26px;color:var(--cyan)\">" + gbp(total) + "</span></div></div>" +
+    "<div class=\"card\" style=\"margin-bottom:12px\">" +
+    "<div class=\"ctitle\">Registration Summary</div>" +
+    "<div class=\"dr\"><div class=\"dk\">Child</div><div class=\"dv\">" + cd.first + " " + cd.last + " (" + cd.ageGroup + ")</div></div>" +
+    "<div class=\"dr\"><div class=\"dk\">Parent</div><div class=\"dv\">" + pd.first + " " + pd.last + "</div></div>" +
+    "<div class=\"dr\"><div class=\"dk\">Contact</div><div class=\"dv\">" + pd.email + "<br>" + pd.phone + "</div></div>" +
+    (cd.medical && cd.medical.toLowerCase() !== "none" ?
+      "<div class=\"dr\"><div class=\"dk\">Medical</div><div class=\"dv\" style=\"color:var(--amber)\">⚠ " + cd.medical + "</div></div>" : "") +
+    "</div>" +
+    "<div class=\"card\"><div class=\"ctitle\">Payment</div>" +
+    paySection +
+    "<button class=\"btn btn-g btn-w\" style=\"margin-top:8px\" onclick=\"showStep(4)\">← Back</button></div>";
+}
+
+function fmtCard(el) {
+  var v = el.value.replace(/[^0-9]/g, "").slice(0, 16);
+  el.value = v.match(/.{1,4}/g) ? v.match(/.{1,4}/g).join(" ") : v;
+}
+
+function fmtExp(el) {
+  var v = el.value.replace(/[^0-9]/g, "").slice(0, 4);
+  el.value = v.length > 2 ? v.slice(0, 2) + " / " + v.slice(2) : v;
+}
+
+function completeFree() { finaliseBooking(0, "free", "NSC-FREE-" + Date.now()); }
+
+async function processPayment(total) {
+  var name = gv("cardName");
+  var num = gv("cardNum").replace(/\s/g, "");
+  var exp = gv("cardExp");
+  var cvc = gv("cardCvc");
+  if (!name) { toast("Please enter the cardholder name", "err"); return; }
+  if (num.length < 16) { toast("Please enter a valid 16-digit card number", "err"); return; }
+  if (!exp || exp.length < 7) { toast("Please enter a valid expiry date", "err"); return; }
+  if (cvc.length < 3) { toast("Please enter your 3-digit CVC", "err"); return; }
+  var btn = document.getElementById("payBtn");
+  if (btn) { btn.textContent = "🔒 Processing..."; btn.disabled = true; }
+  try {
+    var cd = BF.child, pd = BF.parent;
+    var sessNames = BF.sel.map(function(id) {
+      var s = findById(DB.sessions, id);
+      return s ? s.name : id;
+    }).join(", ");
+    var res = await fetch("/.netlify/functions/create-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: Math.round(total * 100),
+        currency: "gbp",
+        description: "NSC Performance — " + sessNames + " for " + cd.first + " " + cd.last,
+        customerEmail: pd.email,
+        metadata: { childName: cd.first + " " + cd.last, parentName: pd.first + " " + pd.last }
+      })
+    });
+    var data = await res.json();
+    if (!data.clientSecret) throw new Error(data.error || "Payment setup failed. Please try again.");
+    if (typeof Stripe === "undefined") throw new Error("Payment system not loaded. Please refresh and try again.");
+    var stripe = Stripe(STRIPE_KEY);
+    var expParts = exp.replace(" ", "").split("/");
+    var result = await stripe.confirmCardPayment(data.clientSecret, {
+      payment_method: {
+        card: {
+          number: num,
+          exp_month: parseInt(expParts[0]),
+          exp_year: parseInt("20" + expParts[1]),
+          cvc: cvc
+        },
+        billing_details: { name: name, email: pd.email }
+      }
+    });
+    if (result.error) throw new Error(result.error.message);
+    await finaliseBooking(total, "card", result.paymentIntent.id);
+  } catch (err) {
+    console.error("Payment error:", err);
+    toast(err.message || "Payment failed. Please try again.", "err");
+    if (btn) { btn.textContent = "🔒 Pay " + gbp(total); btn.disabled = false; }
+  }
+}
+
+async function finaliseBooking(amount, method, ref) {
+  var cd = BF.child, pd = BF.parent;
+  var childName = cd.first + " " + cd.last;
+  var parentName = pd.first + " " + pd.last;
+  var t = new Date().toISOString().split("T")[0];
+  var existing = findById(DB.players, "");
+  existing = null;
+  for (var i = 0; i < DB.players.length; i++) {
+    if (DB.players[i].first === cd.first && DB.players[i].last === cd.last) { existing = DB.players[i]; break; }
+  }
+  if (!existing) {
+    DB.players.push({ id: uid(), first: cd.first, last: cd.last, dob: cd.dob, ageGroup: cd.ageGroup,
+      parent: parentName, email: pd.email, phone: pd.phone, medical: cd.medical, status: "active" });
+  }
+  var sessDetails = [];
+  for (var i = 0; i < BF.sel.length; i++) {
+    var s = findById(DB.sessions, BF.sel[i]);
+    if (s) {
+      sessDetails.push({ name: s.name, date: fmtDate(s.date), time: fmtTime(s.time), location: s.location, price: s.price || 0 });
+      DB.payments.push({ id: uid(), childName: childName, parentName: parentName, parentEmail: pd.email,
+        sessionId: s.id, sessionName: s.name, amount: s.price || 0, status: "paid", method: method, ref: ref + "_" + s.id, date: t });
+    }
+  }
+  try {
+    await fetch("/.netlify/functions/send-confirmation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parentName: parentName, parentEmail: pd.email, childName: childName,
+        childAge: cd.ageGroup, sessions: sessDetails, totalPaid: amount, paymentRef: ref, medicalNotes: cd.medical || "None" })
+    });
+  } catch (e) { console.warn("Email failed:", e.message); }
+  var sessList = BF.sel.map(function(id) {
+    var s = findById(DB.sessions, id);
+    return s ? "• " + s.name + " — " + fmtDate(s.date) + " at " + fmtTime(s.time) : "";
+  }).join("<br>");
+  document.getElementById("bookContent").innerHTML =
+    "<div class=\"card\" style=\"text-align:center\">" +
+    "<div style=\"font-size:60px;margin-bottom:14px\">🎉</div>" +
+    "<div style=\"font-weight:800;font-size:28px;margin-bottom:6px\">Booking Confirmed!</div>" +
+    "<div style=\"font-size:14px;color:var(--muted);margin-bottom:20px\">" + childName + "'s place is secured.</div>" +
+    "<div style=\"background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;margin-bottom:16px;text-align:left\">" +
+    "<div style=\"font-weight:700;margin-bottom:8px;font-size:14px\">Sessions Booked:</div>" +
+    "<div style=\"font-size:13px;color:var(--text);line-height:2.2\">" + sessList + "</div></div>" +
+    (amount > 0 ?
+      "<div style=\"font-weight:800;font-size:26px;color:var(--green);margin-bottom:4px\">" + gbp(amount) + " paid</div>" +
+      "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">A confirmation email has been sent to " + pd.email + "</div>" :
+      "<div style=\"font-size:13px;color:var(--muted);margin-bottom:16px\">Free session — no payment required</div>") +
+    "<div style=\"background:rgba(0,194,224,.06);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:13px;color:var(--text);text-align:left;margin-bottom:18px\">" +
+    "📧 Check your email for full session details.<br>⚽ Please bring boots, shin pads and water.<br>📞 Questions? info@nscperformance.co.uk</div>" +
+    "<button class=\"btn btn-p btn-w\" onclick=\"goPage('pg-phome')\">Back to Home</button>" +
+    "<button class=\"btn btn-g btn-w\" style=\"margin-top:8px\" onclick=\"goPage('pg-hist')\">View My Bookings</button></div>";
+}
+
+// ─── LOAD STRIPE AFTER APP IS READY ───────────────────────────
+window.addEventListener("load", function() {
+  var s = document.createElement("script");
+  s.src = "https://js.stripe.com/v3/";
+  s.async = true;
+  document.body.appendChild(s);
+});
+</script>
+</body>
+</html>
