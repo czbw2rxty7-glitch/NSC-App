@@ -2,6 +2,6 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/.well-known/:path*", "destination": "/public/.well-known/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/public/index.html" }
   ]
 }
