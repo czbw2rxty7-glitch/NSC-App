@@ -63,7 +63,7 @@ body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMa
 .abun{font-size:13px;font-weight:600;}
 .logoutbtn{background:transparent;border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
 
-.pwrap{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 16px calc(var(--nh) + var(--sb) + 16px);-webkit-overflow-scrolling:touch;}
+.pwrap{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 16px calc(var(--nh) + var(--sb) + 60px);-webkit-overflow-scrolling:touch;}
 
 .bnav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--card);border-top:1px solid var(--border);display:flex;padding-bottom:var(--sb);height:calc(var(--nh) + var(--sb));}
 .bni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:color .18s;padding:8px 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
@@ -190,6 +190,7 @@ body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMa
 .gdesc{font-size:13px;color:var(--text);line-height:1.5;}
 
 /* ── TOAST ── */
+.fake-pass{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:0.1em;}
 .twrap{position:fixed;top:calc(var(--st) + 80px);left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:7px;pointer-events:none;width:90%;max-width:340px;}
 .toast{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--white);box-shadow:0 8px 28px rgba(0,0,0,.4);animation:fadeIn .28s ease;display:flex;align-items:center;gap:8px;}
 .toast.ok{border-left:3px solid var(--green);}
@@ -202,7 +203,7 @@ body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMa
 <!-- ═══════════════════════════════════════ LOGIN ═══ -->
 <div class="screen active" id="loginScreen">
   <div style="text-align:center">
-    <img src="/logo.png" style="width:80px;height:80px;object-fit:contain;margin-bottom:14px;" alt="NSC Performance">
+    <img src="/logo.png" style="width:80px;height:80px;object-fit:contain;margin-bottom:14px;" alt="NSC Performance" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex'"><div id="logoFallback" style="display:none;width:80px;height:80px;background:var(--cyan);border-radius:18px;align-items:center;justify-content:center;font-weight:900;color:var(--navy);font-size:26px;margin-bottom:14px;">NSC</div>
     <div class="logo-title">NSC Performance</div>
     <div class="logo-sub">Player Booking &amp; Management Portal</div>
   </div>
@@ -216,28 +217,31 @@ body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMa
     <!-- PARENT -->
     <div id="panelParent">
       <div id="signInView">
+        <form novalidate onsubmit="parentLogin();return false;">
         <div class="lcard">
           <div class="ltitle">Sign In</div>
-          <div class="fi"><label>Email</label><input type="email" id="pl_email" placeholder="you@example.com" autocomplete="email"></div>
-          <div class="fi"><label>Password</label><input type="password" id="pl_pass" placeholder="Your password" autocomplete="current-password"></div>
+          <div class="fi"><label>Email</label><input type="text" id="pl_email" placeholder="you@example.com" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="fi"><label>Password</label><input type="text" id="pl_pass" placeholder="Enter your password" class="fake-pass" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"></div>
           <div class="errmsg" id="pl_err">Incorrect email or password.</div>
-          <button class="btn btn-p btn-w" onclick="parentLogin()">Sign In</button>
+          <button type="button" class="btn btn-p btn-w" onclick="parentLogin()">Sign In</button>
         </div>
+        </form>
         <div class="sep">New to NSC Performance?</div>
         <button class="btn btn-g btn-w" onclick="showReg()">Create Account</button>
 
       </div>
       <div id="registerView" style="display:none">
+        <form novalidate onsubmit="parentRegister();return false;">
         <div class="lcard">
           <div class="ltitle">Create Account</div>
           <div class="fi2">
             <div class="fi"><label>First Name</label><input id="pr_first" placeholder="First name" autocomplete="given-name"></div>
             <div class="fi"><label>Last Name</label><input id="pr_last" placeholder="Last name" autocomplete="family-name"></div>
           </div>
-          <div class="fi"><label>Email</label><input type="email" id="pr_email" placeholder="you@example.com" autocomplete="email"></div>
+          <div class="fi"><label>Email</label><input type="text" id="pr_email" placeholder="you@example.com" autocomplete="off" inputmode="email"></div>
           <div class="fi"><label>Mobile</label><input type="tel" id="pr_phone" placeholder="07700 000000" autocomplete="tel"></div>
-          <div class="fi"><label>Password</label><input type="password" id="pr_pass" placeholder="Min 6 characters" autocomplete="new-password"></div>
-          <div class="fi"><label>Confirm Password</label><input type="password" id="pr_pass2" placeholder="Repeat password" autocomplete="new-password"></div>
+          <div class="fi"><label>Password</label><input type="text" id="pr_pass" placeholder="Min 6 characters" class="fake-pass" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"></div>
+          <div class="fi"><label>Confirm Password</label><input type="text" id="pr_pass2" placeholder="Repeat password" class="fake-pass" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"></div>
           <div class="errmsg" id="pr_err"></div>
           <button class="btn btn-p btn-w" onclick="parentRegister()">Create Account</button>
         </div>
@@ -248,13 +252,15 @@ body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMa
 
     <!-- STAFF -->
     <div id="panelStaff" style="display:none">
+      <form novalidate onsubmit="staffLogin();return false;">
       <div class="lcard">
         <div class="ltitle">Staff Sign In</div>
-        <div class="fi"><label>Username</label><input id="sl_user" placeholder="Staff username" autocomplete="username"></div>
-        <div class="fi"><label>Password</label><input type="password" id="sl_pass" placeholder="Staff password" autocomplete="current-password"></div>
+        <div class="fi"><label>Username</label><input id="sl_user" placeholder="Staff username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="fi"><label>Password</label><input type="text" id="sl_pass" placeholder="Enter password" class="fake-pass" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"></div>
         <div class="errmsg" id="sl_err">Incorrect username or password.</div>
-        <button class="btn btn-p btn-w" onclick="staffLogin()">Sign In</button>
+        <button type="button" class="btn btn-p btn-w" onclick="staffLogin()">Sign In</button>
       </div>
+      </form>
 
     </div>
   </div>
@@ -264,7 +270,7 @@ body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMa
 <div class="screen" id="appScreen">
   <div class="appbar">
     <div class="ablogo">
-      <img src="/logo.png" style="width:34px;height:34px;object-fit:contain;border-radius:6px;" alt="NSC">
+      <img src="/logo.png" style="width:34px;height:34px;object-fit:contain;border-radius:6px;" alt="NSC" onerror="this.outerHTML='<div style=&quot;width:34px;height:34px;background:var(--cyan);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--navy);font-size:13px;&quot;>NSC</div>'">
       <div>
         <div class="abname">NSC Performance</div>
         <div class="abrole" id="hRole"></div>
@@ -1264,7 +1270,8 @@ function toggleSess(id) {
   }
 }
 
-function step1Next() {
+function step1Next(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
   if (!BF.sel.length) { toast("Please select at least one session", "err"); return; }
   showStep(2);
 }
@@ -1301,7 +1308,7 @@ function step2() {
     "<div class=\"fi\"><label>Does your child carry medication?</label>" + sel + medOpts + "</select></div>" +
     "<div style=\"display:flex;gap:10px;margin-top:8px\">" +
     "<button class=\"btn btn-g\" style=\"flex:1\" onclick=\"showStep(1)\">← Back</button>" +
-    "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step2Next()\">Continue</button></div></div>";
+    "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step2Next(event)\">Continue</button></div></div>";
 }
 
 function prefillChild(childId) {
@@ -1314,7 +1321,8 @@ function prefillChild(childId) {
   sv("b_cMed", child.medical || "");
 }
 
-function step2Next() {
+function step2Next(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
   var first = gv("b_cFi"), last = gv("b_cLa"), dob = gv("b_cDb");
   if (!first || !last || !dob) { toast("Please fill in required fields", "err"); return; }
   var selEl = document.getElementById("b_cSel");
@@ -1352,10 +1360,11 @@ function step3() {
     "</div>" +
     "<div style=\"display:flex;gap:10px;margin-top:8px\">" +
     "<button class=\"btn btn-g\" style=\"flex:1\" onclick=\"showStep(2)\">← Back</button>" +
-    "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step3Next()\">Continue</button></div></div>";
+    "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step3Next(event)\">Continue</button></div></div>";
 }
 
-function step3Next() {
+function step3Next(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
   var first = gv("b_pFi"), last = gv("b_pLa"), email = gv("b_pEm"), phone = gv("b_pPh");
   if (!first || !last || !email || !phone) { toast("Please fill in required fields", "err"); return; }
   var sel = document.querySelectorAll("#bookContent select");
@@ -1391,7 +1400,8 @@ function step4() {
     "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step4Next()\">Review & Pay</button></div></div>";
 }
 
-function step4Next() {
+function step4Next(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
   var req = ["c_t","c_m","c_l","c_c"];
   for (var i = 0; i < req.length; i++) {
     var el = document.getElementById(req[i]);
