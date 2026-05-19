@@ -1202,6 +1202,15 @@ function showStep(n) {
   document.getElementById("bookContent").innerHTML = html;
   var pw = document.getElementById("pwrap");
   if (pw) pw.scrollTop = 0;
+  // Setup Apple Pay / Google Pay if on payment step
+  if (n === 5) {
+    var total = 0;
+    for (var i = 0; i < BF.sel.length; i++) {
+      var s = findById(CACHE.sessions, BF.sel[i]);
+      if (s) total += s.price || 0;
+    }
+    if (total > 0) setupPaymentRequest(total);
+  }
 }
 
 function step1() {
@@ -1458,6 +1467,99 @@ function fmtExp(el) {
 }
 
 function completeFree() { finaliseBooking(0, "free", "NSC-FREE-" + Date.now()); }
+
+// ─── SETUP APPLE PAY / GOOGLE PAY ────────────────────────────
+async function setupPaymentRequest(total) {
+  if (typeof Stripe === "undefined") return;
+  try {
+    var stripe = Stripe(STRIPE_KEY);
+    var cd = BF.child, pd = BF.parent;
+    var sessNames = BF.sel.map(function(id) {
+      var s = findById(CACHE.sessions, id);
+      return s ? s.name : id;
+    }).join(", ");
+
+    // Create PaymentIntent first
+    var res = await fetch("/.netlify/functions/create-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: Math.round(total * 100),
+        currency: "gbp",
+        description: "NSC Performance — " + sessNames + " for " + cd.first + " " + cd.last,
+        customerEmail: pd.email,
+        metadata: { childName: cd.first + " " + cd.last, parentName: pd.first + " " + pd.last }
+      })
+    });
+    var data = await res.json();
+    if (!data.clientSecret) return;
+
+    // Create Payment Request (Apple Pay / Google Pay)
+    var paymentRequest = stripe.paymentRequest({
+      country: "GB",
+      currency: "gbp",
+      total: {
+        label: "NSC Performance — " + sessNames,
+        amount: Math.round(total * 100)
+      },
+      requestPayerName: true,
+      requestPayerEmail: true
+    });
+
+    // Check if Apple Pay / Google Pay is available
+    var result = await paymentRequest.canMakePayment();
+    if (result) {
+      // Show the Apple Pay / Google Pay button
+      var wrap = document.getElementById("paymentRequestWrap");
+      if (wrap) wrap.style.display = "block";
+
+      var elements = stripe.elements();
+      var prButton = elements.create("paymentRequestButton", {
+        paymentRequest: paymentRequest,
+        style: {
+          paymentRequestButton: {
+            type: "buy",
+            theme: "dark",
+            height: "52px"
+          }
+        }
+      });
+
+      var btnContainer = document.getElementById("paymentRequestBtn");
+      if (btnContainer) prButton.mount("#paymentRequestBtn");
+
+      // Handle Apple Pay / Google Pay payment
+      paymentRequest.on("paymentmethod", async function(ev) {
+        try {
+          var confirmResult = await stripe.confirmCardPayment(
+            data.clientSecret,
+            { payment_method: ev.paymentMethod.id },
+            { handleActions: false }
+          );
+          if (confirmResult.error) {
+            ev.complete("fail");
+            toast(confirmResult.error.message, "err");
+          } else {
+            ev.complete("success");
+            if (confirmResult.paymentIntent.status === "requires_action") {
+              var actionResult = await stripe.confirmCardPayment(data.clientSecret);
+              if (actionResult.error) {
+                toast(actionResult.error.message, "err");
+                return;
+              }
+            }
+            await finaliseBooking(total, "apple_pay", confirmResult.paymentIntent.id);
+          }
+        } catch(e) {
+          ev.complete("fail");
+          toast("Payment failed: " + e.message, "err");
+        }
+      });
+    }
+  } catch(e) {
+    console.warn("Payment request setup failed:", e.message);
+  }
+}
 
 async function processPayment(total) {
   var name = gv("cardName");
