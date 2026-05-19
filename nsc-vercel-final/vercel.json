@@ -1,19 +1,27 @@
 {
   "version": 2,
-  "functions": {
-    "api/*.js": {
-      "memory": 256,
-      "maxDuration": 30
+  "builds": [
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/*.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/api/$1"
     },
     {
+      "src": "/logo.png",
+      "dest": "/public/logo.png"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/public/$1"
+      "dest": "/public/index.html"
     }
   ]
 }
