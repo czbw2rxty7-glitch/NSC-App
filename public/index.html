@@ -501,34 +501,44 @@ exports.handler = async (event) => {
 <script>
 "use strict";
 
+// ─── SUPABASE API HELPER ──────────────────────────────────────
+// All data calls go through our secure Netlify function
+async function dbCall(action, data) {
+  try {
+    var res = await fetch("/.netlify/functions/db", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: action, data: data || {} })
+    });
+    var result = await res.json();
+    if (!result.success && result.error) {
+      throw new Error(result.error);
+    }
+    return result;
+  } catch (err) {
+    console.error("DB call failed:", action, err.message);
+    throw err;
+  }
+}
+
 // ─── STRIPE KEY ───────────────────────────────────────────────
-// Live Stripe key — payments are active
 var STRIPE_KEY = "pk_live_51TUYv89gt2JjCopLZEUHWaoYrGQV9dS6tl65CocQUge51HABmQvMrxxquTld0rTyepivnNtrfJXAUGa2F0lWi3Tn00r5FEmHSv";
-
-// ─── ACCOUNTS ─────────────────────────────────────────────────
-var ACCOUNTS = {
-  staff: [
-    { id: "st1", username: "nathaniel", password: "nsc2026", name: "Nathaniel Steed", role: "Founder & Director" }
-  ],
-  parents: []
-};
-
-// ─── DATA ─────────────────────────────────────────────────────
-var DB = {
-  sessions: [],
-  players: [],
-  attendance: {},
-  payments: []
-};
-
-// ─── BOOKING STATE ────────────────────────────────────────────
-var BF = { step: 1, sel: [], child: {}, parent: {}, consents: {} };
-var STEPS = ["Sessions", "Child", "Parent", "Consents", "Pay"];
 
 // ─── APP STATE ────────────────────────────────────────────────
 var USER = null;
 var ROLE = null;
 var CUR = "";
+var BF = { step: 1, sel: [], child: {}, parent: {}, consents: {} };
+var STEPS = ["Sessions","Child","Parent","Consents","Pay"];
+
+// Local cache (refreshed from DB on each page visit)
+var CACHE = {
+  sessions: [],
+  players: [],
+  payments: [],
+  bookings: [],
+  stats: {}
+};
 
 // ─── UTILS ────────────────────────────────────────────────────
 function uid() { return "x" + Date.now() + Math.random().toString(36).slice(2, 6); }
@@ -575,6 +585,11 @@ function findById(arr, id) {
   return null;
 }
 
+function showLoading(containerId, msg) {
+  var el = document.getElementById(containerId);
+  if (el) el.innerHTML = "<div class=\"empty\"><div style=\"font-size:28px;margin-bottom:8px\">⏳</div>" + (msg || "Loading...") + "</div>";
+}
+
 // ─── TOAST ────────────────────────────────────────────────────
 function toast(msg, type) {
   var w = document.getElementById("twrap");
@@ -590,7 +605,7 @@ function openSheet(id) { document.getElementById(id).style.display = "flex"; }
 function closeSheet(id) { document.getElementById(id).style.display = "none"; }
 function bgClose(e, id) { if (e.target === document.getElementById(id)) closeSheet(id); }
 
-// ─── LOGIN ────────────────────────────────────────────────────
+// ─── LOGIN TABS ───────────────────────────────────────────────
 function switchTab(tab) {
   document.getElementById("tabP").className = "tab" + (tab === "parent" ? " on" : "");
   document.getElementById("tabS").className = "tab" + (tab === "staff" ? " on" : "");
@@ -608,41 +623,47 @@ function showSignIn() {
   document.getElementById("registerView").style.display = "none";
 }
 
-function staffLogin() {
+// ─── AUTH ─────────────────────────────────────────────────────
+async function staffLogin() {
   var user = gv("sl_user"), pass = gv("sl_pass");
   var err = document.getElementById("sl_err");
-  var found = null;
-  for (var i = 0; i < ACCOUNTS.staff.length; i++) {
-    if (ACCOUNTS.staff[i].username === user && ACCOUNTS.staff[i].password === pass) {
-      found = ACCOUNTS.staff[i]; break;
-    }
+  var btn = document.querySelector("#panelStaff .btn-p");
+  if (btn) { btn.textContent = "Signing in..."; btn.disabled = true; }
+  try {
+    var result = await dbCall("staff_login", { username: user, password: pass });
+    err.style.display = "none";
+    USER = result.user; ROLE = "staff";
+    bootApp();
+  } catch (e) {
+    err.textContent = e.message || "Invalid username or password.";
+    err.style.display = "block";
+    if (btn) { btn.textContent = "Sign In"; btn.disabled = false; }
   }
-  if (!found) { err.style.display = "block"; return; }
-  err.style.display = "none";
-  USER = found; ROLE = "staff";
-  bootApp();
 }
 
-function parentLogin() {
+async function parentLogin() {
   var email = gv("pl_email"), pass = gv("pl_pass");
   var err = document.getElementById("pl_err");
-  var found = null;
-  for (var i = 0; i < ACCOUNTS.parents.length; i++) {
-    if (ACCOUNTS.parents[i].email === email && ACCOUNTS.parents[i].password === pass) {
-      found = ACCOUNTS.parents[i]; break;
-    }
+  var btn = document.querySelector("#signInView .btn-p");
+  if (btn) { btn.textContent = "Signing in..."; btn.disabled = true; }
+  try {
+    var result = await dbCall("parent_login", { email: email, password: pass });
+    err.style.display = "none";
+    USER = result.user; ROLE = "parent";
+    bootApp();
+  } catch (e) {
+    err.textContent = e.message || "Email or password incorrect.";
+    err.style.display = "block";
+    if (btn) { btn.textContent = "Sign In"; btn.disabled = false; }
   }
-  if (!found) { err.style.display = "block"; return; }
-  err.style.display = "none";
-  USER = found; ROLE = "parent";
-  bootApp();
 }
 
-function parentRegister() {
+async function parentRegister() {
   var first = gv("pr_first"), last = gv("pr_last");
   var email = gv("pr_email"), phone = gv("pr_phone");
   var pass = gv("pr_pass"), pass2 = gv("pr_pass2");
   var err = document.getElementById("pr_err");
+  var btn = document.querySelector("#registerView .btn-p");
   if (!first || !last || !email || !pass) {
     err.textContent = "Please fill in all fields."; err.style.display = "block"; return;
   }
@@ -652,20 +673,22 @@ function parentRegister() {
   if (pass !== pass2) {
     err.textContent = "Passwords do not match."; err.style.display = "block"; return;
   }
-  for (var i = 0; i < ACCOUNTS.parents.length; i++) {
-    if (ACCOUNTS.parents[i].email === email) {
-      err.textContent = "An account with this email already exists."; err.style.display = "block"; return;
-    }
+  if (btn) { btn.textContent = "Creating account..."; btn.disabled = true; }
+  try {
+    var result = await dbCall("parent_register", { email: email, password: pass, first: first, last: last, phone: phone });
+    err.style.display = "none";
+    USER = result.user; ROLE = "parent";
+    bootApp();
+  } catch (e) {
+    err.textContent = e.message || "Failed to create account.";
+    err.style.display = "block";
+    if (btn) { btn.textContent = "Create Account"; btn.disabled = false; }
   }
-  var u = { id: uid(), email: email, password: pass, first: first, last: last, phone: phone, children: [] };
-  ACCOUNTS.parents.push(u);
-  err.style.display = "none";
-  USER = u; ROLE = "parent";
-  bootApp();
 }
 
 function logout() {
   USER = null; ROLE = null;
+  CACHE = { sessions: [], players: [], payments: [], bookings: [], stats: {} };
   document.getElementById("loginScreen").classList.add("active");
   document.getElementById("appScreen").classList.remove("active");
   sv("pl_email", ""); sv("pl_pass", ""); sv("sl_user", ""); sv("sl_pass", "");
@@ -675,11 +698,11 @@ function logout() {
 
 // ─── NAV ──────────────────────────────────────────────────────
 var SNAV = [
-  { id: "pg-dash", icon: "⬡",  label: "Home" },
-  { id: "pg-sess", icon: "📅", label: "Sessions" },
-  { id: "pg-att",  icon: "✔",  label: "Attendance" },
-  { id: "pg-play", icon: "👥", label: "Players" },
-  { id: "pg-pay",  icon: "💳", label: "Payments" }
+  { id: "pg-dash",  icon: "⬡",  label: "Home" },
+  { id: "pg-sess",  icon: "📅", label: "Sessions" },
+  { id: "pg-att",   icon: "✔",  label: "Attendance" },
+  { id: "pg-play",  icon: "👥", label: "Players" },
+  { id: "pg-pay",   icon: "💳", label: "Payments" }
 ];
 var PNAV = [
   { id: "pg-phome", icon: "🏠", label: "Home" },
@@ -717,8 +740,8 @@ function buildNav() {
 
 function goPage(pg) {
   CUR = pg;
-  var pwrap = document.getElementById("pwrap");
-  if (pwrap) pwrap.scrollTop = 0;
+  var pw = document.getElementById("pwrap");
+  if (pw) pw.scrollTop = 0;
   var pages = document.querySelectorAll(".page");
   for (var i = 0; i < pages.length; i++) pages[i].classList.remove("on");
   var el = document.getElementById(pg);
@@ -731,7 +754,7 @@ function renderPage(pg) {
   if      (pg === "pg-dash")  rDash();
   else if (pg === "pg-sess")  rSessions();
   else if (pg === "pg-att")   rAttPicker();
-  else if (pg === "pg-play")  renderPlayers("");
+  else if (pg === "pg-play")  rPlayers();
   else if (pg === "pg-pay")   rPayments();
   else if (pg === "pg-phome") rParentHome();
   else if (pg === "pg-book")  startBook();
@@ -753,183 +776,237 @@ function mkRow(av, title, sub, right) {
 }
 
 // ─── STAFF: DASHBOARD ─────────────────────────────────────────
-function rDash() {
+async function rDash() {
   document.getElementById("dashsub").textContent = "Welcome back, " + USER.name.split(" ")[0];
-  var t = today();
-  var up = DB.sessions.filter(function(s) { return s.date >= t; });
-  var active = DB.players.filter(function(p) { return p.status === "active"; }).length;
-  var rev = DB.payments.reduce(function(a, p) { return p.status === "paid" ? a + p.amount : a; }, 0);
-  var av = Object.values(DB.attendance);
-  var ar = av.length ? Math.round(av.filter(function(v) { return v === "present"; }).length / av.length * 100) : 0;
-  document.getElementById("dStats").innerHTML =
-    mkStat("Players", DB.players.length, active + " active") +
-    mkStat("Upcoming", up.length, "sessions") +
-    mkStat("Revenue", gbp(rev), DB.payments.length + " paid", "var(--green)") +
-    mkStat("Attendance", ar + "%", "avg");
-  var sorted = up.slice().sort(function(a, b) { return a.date.localeCompare(b.date); });
-  document.getElementById("dUp").innerHTML = sorted.length ?
-    sorted.slice(0, 4).map(function(s) {
-      return mkRow(initials(s.name), s.name, fmtDate(s.date) + " · " + fmtTime(s.time),
-        "<span class=\"badge b-cy\">" + (s.bookings || []).length + "/" + s.capacity + "</span>");
-    }).join("") :
-    "<div class=\"empty\"><div class=\"ei\">📅</div>No upcoming sessions</div>";
-  var recent = DB.payments.slice().reverse().slice(0, 4);
-  document.getElementById("dPay").innerHTML = recent.length ?
-    recent.map(function(p) {
-      return mkRow("💳", p.childName, p.sessionName, "<div style=\"font-weight:700;color:var(--green)\">" + gbp(p.amount) + "</div>");
-    }).join("") :
-    "<div class=\"empty\"><div class=\"ei\">💳</div>No payments yet</div>";
+  showLoading("dStats", "");
+  showLoading("dUp", "Loading sessions...");
+  showLoading("dPay", "Loading payments...");
+  try {
+    var results = await Promise.all([
+      dbCall("get_stats"),
+      dbCall("get_all_sessions"),
+      dbCall("get_all_payments")
+    ]);
+    var stats = results[0].stats;
+    CACHE.sessions = results[1].sessions || [];
+    CACHE.payments = results[2].payments || [];
+    document.getElementById("dStats").innerHTML =
+      mkStat("Players", stats.totalPlayers, "registered") +
+      mkStat("Upcoming", stats.upcomingSessions, "sessions") +
+      mkStat("Revenue", gbp(stats.totalRevenue), stats.totalBookings + " bookings", "var(--green)") +
+      mkStat("Total Paid", stats.totalBookings, "all time");
+    var t = today();
+    var up = CACHE.sessions.filter(function(s) { return s.date >= t; }).slice(0, 4);
+    document.getElementById("dUp").innerHTML = up.length ?
+      up.map(function(s) {
+        return mkRow(initials(s.name), s.name, fmtDate(s.date) + " · " + fmtTime(s.time),
+          "<span class=\"badge b-cy\">" + s.bookingCount + "/" + s.capacity + "</span>");
+      }).join("") :
+      "<div class=\"empty\"><div class=\"ei\">📅</div>No upcoming sessions</div>";
+    var recent = CACHE.payments.slice(0, 5);
+    document.getElementById("dPay").innerHTML = recent.length ?
+      recent.map(function(p) {
+        return mkRow("💳", p.child_name, p.session_name,
+          "<div style=\"font-weight:700;color:var(--green)\">" + gbp(p.amount) + "</div>");
+      }).join("") :
+      "<div class=\"empty\"><div class=\"ei\">💳</div>No payments yet</div>";
+  } catch(e) {
+    toast("Failed to load dashboard: " + e.message, "err");
+  }
 }
 
 // ─── STAFF: SESSIONS ──────────────────────────────────────────
-function rSessions() {
+async function rSessions() {
   var el = document.getElementById("sessList");
-  if (!DB.sessions.length) { el.innerHTML = "<div class=\"empty\"><div class=\"ei\">📅</div>No sessions yet</div>"; return; }
-  var sorted = DB.sessions.slice().sort(function(a, b) { return a.date.localeCompare(b.date); });
-  el.innerHTML = sorted.map(function(s) {
-    var past = s.date < today();
-    return "<div class=\"card\">" +
-      "<div style=\"display:flex;align-items:flex-start;justify-content:space-between;gap:10px\">" +
-      "<div style=\"flex:1;min-width:0\">" +
-      "<div style=\"font-weight:700;font-size:15px;margin-bottom:3px\">" + s.name + "</div>" +
-      "<div style=\"font-size:12px;color:var(--muted);margin-bottom:6px\">" + fmtDate(s.date) + " · " + fmtTime(s.time) + " · " + s.location + "</div>" +
-      "<div style=\"display:flex;gap:6px;flex-wrap:wrap\">" +
-      "<span class=\"badge b-cy\">" + s.ageGroup + "</span>" +
-      "<span class=\"tag\">" + s.type + "</span>" +
-      "<span style=\"font-size:12px;color:var(--green);font-weight:700\">" + gbp(s.price || 0) + "</span>" +
-      "</div>" +
-      (s.notes ? "<div style=\"font-size:12px;color:var(--muted);margin-top:5px\">" + s.notes + "</div>" : "") +
-      "</div>" +
-      "<div style=\"text-align:right;flex-shrink:0\">" +
-      "<div style=\"font-weight:800;font-size:22px;color:var(--cyan)\">" + (s.bookings || []).length +
-      "<span style=\"font-size:13px;color:var(--muted)\">/" + s.capacity + "</span></div>" +
-      "<div style=\"font-size:11px;color:var(--muted)\">booked</div></div></div>" +
-      (!past ?
-        "<div style=\"display:flex;gap:8px;margin-top:12px\">" +
-        "<button class=\"btn btn-g btn-sm\" style=\"flex:1\" onclick=\"editSess('" + s.id + "')\">Edit</button>" +
-        "<button class=\"btn btn-d btn-sm\" style=\"flex:1\" onclick=\"delSess('" + s.id + "')\">Delete</button>" +
-        "</div>" :
-        "<div style=\"margin-top:8px\"><span class=\"badge b-gy\">Past</span></div>") +
-      "</div>";
-  }).join("");
+  showLoading("sessList", "Loading sessions...");
+  try {
+    var result = await dbCall("get_all_sessions");
+    CACHE.sessions = result.sessions || [];
+    if (!CACHE.sessions.length) {
+      el.innerHTML = "<div class=\"empty\"><div class=\"ei\">📅</div>No sessions yet. Add your first session!</div>";
+      return;
+    }
+    el.innerHTML = CACHE.sessions.map(function(s) {
+      var past = s.date < today();
+      return "<div class=\"card\">" +
+        "<div style=\"display:flex;align-items:flex-start;justify-content:space-between;gap:10px\">" +
+        "<div style=\"flex:1;min-width:0\">" +
+        "<div style=\"font-weight:700;font-size:15px;margin-bottom:3px\">" + s.name + "</div>" +
+        "<div style=\"font-size:12px;color:var(--muted);margin-bottom:6px\">" + fmtDate(s.date) + " · " + fmtTime(s.time) + " · " + s.location + "</div>" +
+        "<div style=\"display:flex;gap:6px;flex-wrap:wrap\">" +
+        "<span class=\"badge b-cy\">" + s.ageGroup + "</span>" +
+        "<span class=\"tag\">" + s.type + "</span>" +
+        "<span style=\"font-size:12px;color:var(--green);font-weight:700\">" + gbp(s.price) + "</span>" +
+        "</div>" +
+        (s.notes ? "<div style=\"font-size:12px;color:var(--muted);margin-top:5px\">" + s.notes + "</div>" : "") +
+        "</div>" +
+        "<div style=\"text-align:right;flex-shrink:0\">" +
+        "<div style=\"font-weight:800;font-size:22px;color:var(--cyan)\">" + s.bookingCount +
+        "<span style=\"font-size:13px;color:var(--muted)\">/</span>" + s.capacity + "</div>" +
+        "<div style=\"font-size:11px;color:var(--muted)\">booked</div></div></div>" +
+        (!past ?
+          "<div style=\"display:flex;gap:8px;margin-top:12px\">" +
+          "<button class=\"btn btn-g btn-sm\" style=\"flex:1\" onclick=\"editSess('" + s.id + "')\">Edit</button>" +
+          "<button class=\"btn btn-d btn-sm\" style=\"flex:1\" onclick=\"delSess('" + s.id + "')\">Delete</button>" +
+          "</div>" :
+          "<div style=\"margin-top:8px\"><span class=\"badge b-gy\">Past</span></div>") +
+        "</div>";
+    }).join("");
+  } catch(e) {
+    el.innerHTML = "<div class=\"empty\"><div class=\"ei\">⚠</div>" + e.message + "</div>";
+  }
 }
 
 function editSess(id) {
-  var s = findById(DB.sessions, id); if (!s) return;
+  var s = findById(CACHE.sessions, id); if (!s) return;
   document.getElementById("shSessTitle").textContent = "Edit Session";
   sv("eSId", s.id); sv("sN", s.name); sv("sTy", s.type);
   sv("sDt", s.date); sv("sTm", s.time); sv("sLo", s.location);
-  sv("sAg", s.ageGroup); sv("sCa", s.capacity); sv("sPr", s.price || ""); sv("sNo", s.notes);
+  sv("sAg", s.ageGroup); sv("sCa", s.capacity); sv("sPr", s.price || ""); sv("sNo", s.notes || "");
   openSheet("shSess");
 }
 
-function saveSession() {
+async function saveSession() {
   var eid = gv("eSId");
   var s = {
-    id: eid || uid(), name: gv("sN"), type: gv("sTy"), date: gv("sDt"),
+    id: eid || null, name: gv("sN"), type: gv("sTy"), date: gv("sDt"),
     time: gv("sTm"), location: gv("sLo"), ageGroup: gv("sAg"),
     capacity: parseInt(gv("sCa")) || 20, price: parseFloat(gv("sPr")) || 0,
-    notes: gv("sNo"), bookings: []
+    notes: gv("sNo")
   };
   if (!s.name || !s.date) { toast("Name and date are required", "err"); return; }
-  if (eid) {
-    for (var i = 0; i < DB.sessions.length; i++) {
-      if (DB.sessions[i].id === eid) { s.bookings = DB.sessions[i].bookings; DB.sessions[i] = s; break; }
+  try {
+    if (eid) {
+      await dbCall("update_session", s);
+      toast("Session updated");
+    } else {
+      await dbCall("create_session", s);
+      toast("Session created");
     }
-  } else { DB.sessions.push(s); }
-  closeSheet("shSess"); sv("eSId", "");
-  document.getElementById("shSessTitle").textContent = "New Session";
-  toast(eid ? "Session updated" : "Session created");
-  rSessions();
+    closeSheet("shSess"); sv("eSId", "");
+    document.getElementById("shSessTitle").textContent = "New Session";
+    rSessions();
+  } catch(e) {
+    toast("Failed to save: " + e.message, "err");
+  }
 }
 
-function delSess(id) {
+async function delSess(id) {
   if (!confirm("Delete this session?")) return;
-  DB.sessions = DB.sessions.filter(function(s) { return s.id !== id; });
-  toast("Session deleted"); rSessions();
+  try {
+    await dbCall("delete_session", { id: id });
+    toast("Session deleted");
+    rSessions();
+  } catch(e) {
+    toast("Failed to delete: " + e.message, "err");
+  }
 }
 
 // ─── STAFF: ATTENDANCE ────────────────────────────────────────
-function rAttPicker() {
+async function rAttPicker() {
   var pk = document.getElementById("attPick");
-  pk.innerHTML = "<option value=\"\">Choose a session...</option>";
-  var sorted = DB.sessions.slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
-  for (var i = 0; i < sorted.length; i++) {
-    var opt = document.createElement("option");
-    opt.value = sorted[i].id;
-    opt.textContent = sorted[i].name + " — " + fmtDate(sorted[i].date);
-    pk.appendChild(opt);
+  pk.innerHTML = "<option value=\"\">Loading sessions...</option>";
+  try {
+    var result = await dbCall("get_all_sessions");
+    CACHE.sessions = result.sessions || [];
+    pk.innerHTML = "<option value=\"\">Choose a session...</option>";
+    var sorted = CACHE.sessions.slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
+    for (var i = 0; i < sorted.length; i++) {
+      var opt = document.createElement("option");
+      opt.value = sorted[i].id;
+      opt.textContent = sorted[i].name + " — " + fmtDate(sorted[i].date);
+      pk.appendChild(opt);
+    }
+    document.getElementById("attSheet").innerHTML = "<div class=\"empty\"><div class=\"ei\">✔</div>Select a session above</div>";
+  } catch(e) {
+    pk.innerHTML = "<option value=\"\">Failed to load sessions</option>";
   }
-  document.getElementById("attSheet").innerHTML = "<div class=\"empty\"><div class=\"ei\">✔</div>Select a session above</div>";
 }
 
-function renderAttSheet() {
+async function renderAttSheet() {
   var sid = gv("attPick");
   var el = document.getElementById("attSheet");
   if (!sid) { el.innerHTML = ""; return; }
-  var sess = findById(DB.sessions, sid); if (!sess) return;
-  var rows = DB.players.map(function(p) {
-    var k = sid + "_" + p.id;
-    var st = DB.attendance[k] || "";
-    var booked = (sess.bookings || []).indexOf(p.id) > -1;
-    return "<div style=\"display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)\">" +
-      "<div class=\"av av-s\">" + initials(p.first + " " + p.last) + "</div>" +
-      "<div style=\"flex:1\"><div style=\"font-weight:600;font-size:14px\">" + p.first + " " + p.last + "</div>" +
-      "<div style=\"font-size:12px;color:var(--muted)\">" + p.ageGroup +
-      (booked ? " · <span class=\"badge b-cy\">Booked</span>" : "") + "</div></div>" +
-      "<div class=\"attog\">" +
-      "<button class=\"atopt " + (st === "present" ? "present" : "") + "\" onclick=\"markA('" + sid + "','" + p.id + "','present',this)\">P</button>" +
-      "<button class=\"atopt " + (st === "late" ? "late" : "") + "\" onclick=\"markA('" + sid + "','" + p.id + "','late',this)\">L</button>" +
-      "<button class=\"atopt " + (st === "absent" ? "absent" : "") + "\" onclick=\"markA('" + sid + "','" + p.id + "','absent',this)\">A</button>" +
-      "</div></div>";
-  }).join("");
-  el.innerHTML = "<div class=\"card\">" +
-    "<div style=\"font-weight:700;font-size:15px;margin-bottom:2px\">" + sess.name + "</div>" +
-    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:14px\">" + fmtDate(sess.date) + " · " + fmtTime(sess.time) + " · " + sess.location + "</div>" +
-    rows +
-    "<button class=\"btn btn-s btn-w\" style=\"margin-top:14px\" onclick=\"toast('Attendance saved')\">Save Attendance</button></div>";
+  var sess = findById(CACHE.sessions, sid);
+  if (!sess) return;
+  showLoading("attSheet", "Loading players...");
+  try {
+    var results = await Promise.all([
+      dbCall("get_all_players"),
+      dbCall("get_attendance", { sessionId: sid })
+    ]);
+    CACHE.players = results[0].players || [];
+    var attMap = {};
+    (results[1].attendance || []).forEach(function(a) { attMap[a.player_name] = a.status; });
+    var rows = CACHE.players.map(function(p) {
+      var fullName = p.first + " " + p.last;
+      var st = attMap[fullName] || "";
+      return "<div style=\"display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)\">" +
+        "<div class=\"av av-s\">" + initials(fullName) + "</div>" +
+        "<div style=\"flex:1\"><div style=\"font-weight:600;font-size:14px\">" + fullName + "</div>" +
+        "<div style=\"font-size:12px;color:var(--muted)\">" + p.ageGroup + "</div></div>" +
+        "<div class=\"attog\">" +
+        "<button class=\"atopt " + (st === "present" ? "present" : "") + "\" onclick=\"markA('" + sid + "','" + fullName + "','" + p.email + "','present',this)\">P</button>" +
+        "<button class=\"atopt " + (st === "late" ? "late" : "") + "\" onclick=\"markA('" + sid + "','" + fullName + "','" + p.email + "','late',this)\">L</button>" +
+        "<button class=\"atopt " + (st === "absent" ? "absent" : "") + "\" onclick=\"markA('" + sid + "','" + fullName + "','" + p.email + "','absent',this)\">A</button>" +
+        "</div></div>";
+    }).join("");
+    el.innerHTML = "<div class=\"card\">" +
+      "<div style=\"font-weight:700;font-size:15px;margin-bottom:2px\">" + sess.name + "</div>" +
+      "<div style=\"font-size:12px;color:var(--muted);margin-bottom:14px\">" + fmtDate(sess.date) + " · " + fmtTime(sess.time) + "</div>" +
+      rows +
+      "</div>";
+  } catch(e) {
+    el.innerHTML = "<div class=\"empty\"><div class=\"ei\">⚠</div>" + e.message + "</div>";
+  }
 }
 
-function markA(sid, pid, status, btn) {
-  var k = sid + "_" + pid;
+async function markA(sid, playerName, email, status, btn) {
   var btns = btn.parentElement.querySelectorAll(".atopt");
+  var current = btn.classList.contains(status) ? status : "";
   for (var i = 0; i < btns.length; i++) btns[i].classList.remove("present", "late", "absent");
-  if (DB.attendance[k] === status) { delete DB.attendance[k]; }
-  else { DB.attendance[k] = status; btn.classList.add(status); }
+  var newStatus = current === status ? "" : status;
+  if (newStatus) btn.classList.add(newStatus);
+  try {
+    await dbCall("mark_attendance", { sessionId: sid, playerName: playerName, parentEmail: email, status: newStatus });
+  } catch(e) {
+    toast("Failed to save attendance", "err");
+  }
 }
 
 // ─── STAFF: PLAYERS ───────────────────────────────────────────
-function renderPlayers(q) {
+async function rPlayers(q) {
   q = q || "";
-  var list = DB.players.filter(function(p) {
-    if (!q) return true;
-    return (p.first + " " + p.last + " " + p.parent).toLowerCase().indexOf(q.toLowerCase()) > -1;
-  });
   var el = document.getElementById("playerList");
-  if (!list.length) { el.innerHTML = "<div class=\"empty\"><div class=\"ei\">👥</div>No players found</div>"; return; }
-  el.innerHTML = list.map(function(p) {
-    var enrolled = DB.sessions.filter(function(s) { return (s.bookings || []).indexOf(p.id) > -1; });
-    var aks = Object.keys(DB.attendance).filter(function(k) { return k.split("_")[1] === p.id; });
-    var pres = aks.filter(function(k) { return DB.attendance[k] === "present"; }).length;
-    var ar = aks.length ? Math.round(pres / aks.length * 100) : 0;
-    return "<div class=\"pcard\" onclick=\"toggleDetail('" + p.id + "')\">" +
-      "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:10px\">" +
-      "<div class=\"av av-m\">" + initials(p.first + " " + p.last) + "</div>" +
-      "<div style=\"flex:1\"><div style=\"font-weight:700;font-size:15px\">" + p.first + " " + p.last + "</div>" +
-      "<div style=\"font-size:12px;color:var(--muted)\">" + p.ageGroup + " · Age " + calcAge(p.dob) + "</div></div>" +
-      sbadge(p.status) + "</div>" +
-      "<div style=\"font-size:12px;color:var(--text);margin-bottom:3px\">👤 " + p.parent + " · 📞 " + (p.phone || "—") + "</div>" +
-      (p.medical ? "<div style=\"font-size:12px;color:var(--amber);margin-top:4px\">⚠ " + p.medical + "</div>" : "") +
-      "<div id=\"pd_" + p.id + "\" style=\"display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)\">" +
-      "<div class=\"dr\"><div class=\"dk\">Email</div><div class=\"dv\">" + (p.email || "—") + "</div></div>" +
-      "<div class=\"dr\"><div class=\"dk\">Attendance</div><div class=\"dv\" style=\"color:var(--cyan);font-weight:700\">" + ar + "%</div></div>" +
-      "<div class=\"dr\"><div class=\"dk\">Sessions</div><div class=\"dv\">" +
-      (enrolled.length ? enrolled.map(function(s) { return s.name; }).join(", ") : "None") + "</div></div>" +
-      "<div style=\"display:flex;gap:8px;margin-top:12px\">" +
-      "<button class=\"btn btn-g btn-sm\" style=\"flex:1\" onclick=\"event.stopPropagation();editPlayer('" + p.id + "')\">Edit</button>" +
-      "<button class=\"btn btn-d btn-sm\" style=\"flex:1\" onclick=\"event.stopPropagation();delPlayer('" + p.id + "')\">Remove</button>" +
-      "</div></div></div>";
-  }).join("");
+  showLoading("playerList", "Loading players...");
+  try {
+    var result = await dbCall("get_all_players");
+    CACHE.players = result.players || [];
+    var list = CACHE.players.filter(function(p) {
+      if (!q) return true;
+      return (p.first + " " + p.last + " " + p.parent).toLowerCase().indexOf(q.toLowerCase()) > -1;
+    });
+    if (!list.length) {
+      el.innerHTML = "<div class=\"empty\"><div class=\"ei\">👥</div>" + (q ? "No players found" : "No players registered yet") + "</div>";
+      return;
+    }
+    el.innerHTML = list.map(function(p) {
+      return "<div class=\"pcard\" onclick=\"toggleDetail('" + p.id + "')\">"+
+        "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:10px\">" +
+        "<div class=\"av av-m\">" + initials(p.first + " " + p.last) + "</div>" +
+        "<div style=\"flex:1\"><div style=\"font-weight:700;font-size:15px\">" + p.first + " " + p.last + "</div>" +
+        "<div style=\"font-size:12px;color:var(--muted)\">" + p.ageGroup + " · Age " + calcAge(p.dob) + "</div></div>" +
+        "<span class=\"badge b-gr\">Active</span></div>" +
+        "<div style=\"font-size:12px;color:var(--text);margin-bottom:3px\">👤 " + p.parent + " · 📞 " + (p.phone || "—") + "</div>" +
+        (p.medical ? "<div style=\"font-size:12px;color:var(--amber);margin-top:4px\">⚠ " + p.medical + "</div>" : "") +
+        "<div id=\"pd_" + p.id + "\" style=\"display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)\">" +
+        "<div class=\"dr\"><div class=\"dk\">Email</div><div class=\"dv\">" + (p.email || "—") + "</div></div>" +
+        "<div class=\"dr\"><div class=\"dk\">DOB</div><div class=\"dv\">" + fmtDate(p.dob) + "</div></div>" +
+        "</div></div>";
+    }).join("");
+  } catch(e) {
+    el.innerHTML = "<div class=\"empty\"><div class=\"ei\">⚠</div>" + e.message + "</div>";
+  }
 }
 
 function toggleDetail(id) {
@@ -937,150 +1014,150 @@ function toggleDetail(id) {
   if (el) el.style.display = el.style.display === "none" ? "block" : "none";
 }
 
-function editPlayer(id) {
-  var p = findById(DB.players, id); if (!p) return;
-  document.getElementById("shPlayTitle").textContent = "Edit Player";
-  sv("ePId", p.id); sv("pFi", p.first); sv("pLa", p.last); sv("pDb", p.dob);
-  sv("pAg", p.ageGroup); sv("pPa", p.parent); sv("pEm", p.email); sv("pPh", p.phone);
-  sv("pMe", p.medical); sv("pSt", p.status);
-  openSheet("shPlay");
-}
-
-function savePlayer() {
-  var eid = gv("ePId");
-  var p = {
-    id: eid || uid(), first: gv("pFi"), last: gv("pLa"), dob: gv("pDb"),
-    ageGroup: gv("pAg"), parent: gv("pPa"), email: gv("pEm"),
-    phone: gv("pPh"), medical: gv("pMe"), status: gv("pSt")
-  };
-  if (!p.first || !p.last) { toast("Name required", "err"); return; }
-  if (eid) {
-    for (var i = 0; i < DB.players.length; i++) {
-      if (DB.players[i].id === eid) { DB.players[i] = p; break; }
-    }
-  } else { DB.players.push(p); }
-  closeSheet("shPlay"); sv("ePId", "");
-  document.getElementById("shPlayTitle").textContent = "Add Player";
-  toast(eid ? "Player updated" : "Player added");
-  renderPlayers("");
-}
-
-function delPlayer(id) {
-  if (!confirm("Remove this player?")) return;
-  DB.players = DB.players.filter(function(p) { return p.id !== id; });
-  toast("Player removed"); renderPlayers("");
-}
-
 // ─── STAFF: PAYMENTS ──────────────────────────────────────────
-function rPayments() {
-  var paid = DB.payments.filter(function(x) { return x.status === "paid"; });
-  var rev = paid.reduce(function(a, x) { return a + x.amount; }, 0);
-  document.getElementById("payStats").innerHTML =
-    mkStat("Revenue", gbp(rev), "total", "var(--green)") +
-    mkStat("Transactions", paid.length, "") +
-    mkStat("Avg Value", gbp(paid.length ? rev / paid.length : 0), "") +
-    mkStat("Pending", DB.payments.filter(function(x) { return x.status === "pending"; }).length, "", "var(--amber)");
-  var el = document.getElementById("payList");
-  el.innerHTML = DB.payments.length ?
-    DB.payments.slice().reverse().map(function(p) {
-      return "<div class=\"paycard\">" +
-        "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\">" +
-        "<div style=\"font-weight:600;font-size:14px\">" + p.childName + "</div>" +
-        "<div style=\"font-weight:800;font-size:16px;color:var(--green)\">" + gbp(p.amount) + "</div></div>" +
-        "<div style=\"font-size:12px;color:var(--muted)\">" + p.sessionName + " · " + fmtDate(p.date) + "</div>" +
-        "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-top:6px\">" +
-        "<span style=\"font-family:monospace;font-size:11px;color:var(--muted)\">" + p.ref.slice(0, 22) + "</span>" +
-        "<span class=\"badge b-gr\">" + p.status + "</span></div></div>";
-    }).join("") :
-    "<div class=\"empty\"><div class=\"ei\">💳</div>No payments yet</div>";
+async function rPayments() {
+  showLoading("payStats", "");
+  showLoading("payList", "Loading payments...");
+  try {
+    var result = await dbCall("get_all_payments");
+    CACHE.payments = result.payments || [];
+    var paid = CACHE.payments.filter(function(x) { return x.status === "paid"; });
+    var rev = paid.reduce(function(a, x) { return a + parseFloat(x.amount || 0); }, 0);
+    document.getElementById("payStats").innerHTML =
+      mkStat("Revenue", gbp(rev), "total", "var(--green)") +
+      mkStat("Transactions", paid.length, "") +
+      mkStat("Avg Value", gbp(paid.length ? rev / paid.length : 0), "") +
+      mkStat("Pending", CACHE.payments.filter(function(x) { return x.status === "pending"; }).length, "", "var(--amber)");
+    var el = document.getElementById("payList");
+    el.innerHTML = CACHE.payments.length ?
+      CACHE.payments.map(function(p) {
+        return "<div class=\"paycard\">" +
+          "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:4px\">" +
+          "<div style=\"font-weight:600;font-size:14px\">" + p.child_name + "</div>" +
+          "<div style=\"font-weight:800;font-size:16px;color:var(--green)\">" + gbp(p.amount) + "</div></div>" +
+          "<div style=\"font-size:12px;color:var(--muted)\">" + p.session_name + " · " + fmtDate(p.created_at ? p.created_at.split("T")[0] : "") + "</div>" +
+          "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-top:6px\">" +
+          "<span style=\"font-family:monospace;font-size:11px;color:var(--muted)\">" + (p.stripe_ref || "—").slice(0, 22) + "</span>" +
+          "<span class=\"badge b-gr\">" + p.status + "</span></div></div>";
+      }).join("") :
+      "<div class=\"empty\"><div class=\"ei\">💳</div>No payments yet</div>";
+  } catch(e) {
+    toast("Failed to load payments: " + e.message, "err");
+  }
 }
 
 // ─── PARENT: HOME ─────────────────────────────────────────────
-function rParentHome() {
+async function rParentHome() {
   document.getElementById("pWelcome").textContent = "Hello, " + USER.first + "!";
-  var ch = USER.children || [];
-  var t = today();
-  var mine = DB.payments.filter(function(p) { return p.parentEmail === USER.email; });
-  var upcoming = mine.filter(function(b) {
-    var s = findById(DB.sessions, b.sessionId);
-    return s && s.date >= t;
-  });
-  var spent = mine.reduce(function(a, x) { return a + x.amount; }, 0);
-  document.getElementById("pStats").innerHTML =
-    mkStat("Children", ch.length, "") +
-    mkStat("Upcoming", upcoming.length, "sessions") +
-    mkStat("Bookings", mine.length, "total") +
-    mkStat("Spent", gbp(spent), "", "var(--green)");
-  var mc = document.getElementById("myKids");
-  mc.innerHTML = ch.length ?
-    ch.map(function(c) {
-      return "<div class=\"lrow\">" +
-        "<div class=\"av av-s\">" + initials(c.first + " " + c.last) + "</div>" +
-        "<div class=\"lmain\"><div class=\"ltitle\">" + c.first + " " + c.last + "</div>" +
-        "<div class=\"lsub\">" + c.ageGroup + " · Age " + calcAge(c.dob) +
-        (c.medical ? " · ⚠ " + c.medical : "") + "</div></div>" +
-        "<button class=\"btn btn-d btn-sm\" onclick=\"rmKid('" + c.id + "')\">Remove</button></div>";
-    }).join("") :
-    "<div class=\"empty\" style=\"padding:20px\"><div class=\"ei\">👦</div>No children added yet</div>";
-  var mb = document.getElementById("myBks");
-  mb.innerHTML = mine.length ?
-    mine.slice().reverse().slice(0, 5).map(function(b) {
-      var s = findById(DB.sessions, b.sessionId);
-      var past = s && s.date < t;
-      return "<div class=\"lrow\">" +
-        "<div class=\"av av-s\">⚽</div>" +
-        "<div class=\"lmain\"><div class=\"ltitle\">" + b.childName + "</div>" +
-        "<div class=\"lsub\">" + b.sessionName + (s ? " · " + fmtDate(s.date) : "") + "</div></div>" +
-        "<div class=\"lright\"><div style=\"font-weight:700;color:var(--green);font-size:13px\">" + gbp(b.amount) + "</div>" +
-        (past ? "<span class=\"badge b-gy\">Past</span>" : "<span class=\"badge b-gr\">Upcoming</span>") +
-        "</div></div>";
-    }).join("") :
-    "<div class=\"empty\" style=\"padding:20px\"><div class=\"ei\">📋</div>No bookings yet<br>" +
-    "<button class=\"btn btn-p btn-sm\" onclick=\"goPage('pg-book')\" style=\"margin-top:10px\">Book Now</button></div>";
+  showLoading("myKids", "");
+  showLoading("myBks", "Loading bookings...");
+  try {
+    var result = await dbCall("get_my_bookings", { parentId: USER.id });
+    CACHE.bookings = result.bookings || [];
+    var ch = USER.children || [];
+    var t = today();
+    var upcoming = CACHE.bookings.filter(function(b) {
+      return b.sessions && b.sessions.date >= t;
+    });
+    var spent = CACHE.bookings.reduce(function(a, x) { return a + parseFloat(x.amount || 0); }, 0);
+    document.getElementById("pStats").innerHTML =
+      mkStat("Children", ch.length, "") +
+      mkStat("Upcoming", upcoming.length, "sessions") +
+      mkStat("Bookings", CACHE.bookings.length, "total") +
+      mkStat("Spent", gbp(spent), "", "var(--green)");
+    var mc = document.getElementById("myKids");
+    mc.innerHTML = ch.length ?
+      ch.map(function(c) {
+        return "<div class=\"lrow\">" +
+          "<div class=\"av av-s\">" + initials(c.first + " " + c.last) + "</div>" +
+          "<div class=\"lmain\"><div class=\"ltitle\">" + c.first + " " + c.last + "</div>" +
+          "<div class=\"lsub\">" + c.ageGroup + " · Age " + calcAge(c.dob) +
+          (c.medical ? " · ⚠ " + c.medical : "") + "</div></div>" +
+          "<button class=\"btn btn-d btn-sm\" onclick=\"rmKid('" + c.id + "')\">Remove</button></div>";
+      }).join("") :
+      "<div class=\"empty\" style=\"padding:20px\"><div class=\"ei\">👦</div>No children added yet</div>";
+    var mb = document.getElementById("myBks");
+    mb.innerHTML = CACHE.bookings.length ?
+      CACHE.bookings.slice(0, 5).map(function(b) {
+        var sess = b.sessions;
+        var past = sess && sess.date < t;
+        return "<div class=\"lrow\">" +
+          "<div class=\"av av-s\">⚽</div>" +
+          "<div class=\"lmain\"><div class=\"ltitle\">" + b.child_name + "</div>" +
+          "<div class=\"lsub\">" + (sess ? sess.name : b.session_id) + (sess ? " · " + fmtDate(sess.date) : "") + "</div></div>" +
+          "<div class=\"lright\"><div style=\"font-weight:700;color:var(--green);font-size:13px\">" + gbp(b.amount) + "</div>" +
+          (past ? "<span class=\"badge b-gy\">Past</span>" : "<span class=\"badge b-gr\">Upcoming</span>") +
+          "</div></div>";
+      }).join("") :
+      "<div class=\"empty\" style=\"padding:20px\"><div class=\"ei\">📋</div>No bookings yet<br>" +
+      "<button class=\"btn btn-p btn-sm\" onclick=\"goPage('pg-book')\" style=\"margin-top:10px\">Book Now</button></div>";
+  } catch(e) {
+    toast("Failed to load: " + e.message, "err");
+  }
 }
 
-function saveChild() {
-  var c = { id: uid(), first: gv("cFi"), last: gv("cLa"), dob: gv("cDb"), ageGroup: gv("cAg"), medical: gv("cMe") };
+async function saveChild() {
+  var c = { first: gv("cFi"), last: gv("cLa"), dob: gv("cDb"), ageGroup: gv("cAg"), medical: gv("cMe") };
   if (!c.first || !c.last) { toast("Name required", "err"); return; }
-  if (!USER.children) USER.children = [];
-  USER.children.push(c);
-  closeSheet("shChild");
-  toast(c.first + " added");
-  rParentHome();
+  try {
+    var result = await dbCall("add_child", {
+      parentId: USER.id, first: c.first, last: c.last,
+      dob: c.dob, ageGroup: c.ageGroup, medical: c.medical
+    });
+    if (!USER.children) USER.children = [];
+    USER.children.push(result.child);
+    closeSheet("shChild");
+    toast(c.first + " added");
+    rParentHome();
+  } catch(e) {
+    toast("Failed to add child: " + e.message, "err");
+  }
 }
 
-function rmKid(id) {
+async function rmKid(id) {
   if (!confirm("Remove this child?")) return;
-  USER.children = USER.children.filter(function(c) { return c.id !== id; });
-  toast("Removed"); rParentHome();
+  try {
+    await dbCall("remove_child", { childId: id });
+    USER.children = USER.children.filter(function(c) { return c.id !== id; });
+    toast("Removed");
+    rParentHome();
+  } catch(e) {
+    toast("Failed to remove: " + e.message, "err");
+  }
 }
 
 // ─── PARENT: HISTORY ──────────────────────────────────────────
-function rHistory() {
-  var mine = DB.payments.filter(function(p) { return p.parentEmail === USER.email; });
-  var t = today();
+async function rHistory() {
   var el = document.getElementById("histList");
-  el.innerHTML = mine.length ?
-    mine.slice().reverse().map(function(b) {
-      var s = findById(DB.sessions, b.sessionId);
-      var past = s && s.date < t;
-      return "<div class=\"card\">" +
-        "<div style=\"display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px\">" +
-        "<div style=\"font-weight:700;font-size:15px\">" + b.sessionName + "</div>" +
-        "<div style=\"font-weight:800;font-size:17px;color:var(--green)\">" + gbp(b.amount) + "</div></div>" +
-        "<div style=\"font-size:13px;color:var(--muted);margin-bottom:4px\">" +
-        b.childName + " · " + (s ? fmtDate(s.date) : "—") + "</div>" +
-        "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-top:8px\">" +
-        "<span style=\"font-family:monospace;font-size:11px;color:var(--muted)\">" + b.ref.slice(0, 22) + "</span>" +
-        (past ? "<span class=\"badge b-gy\">Past</span>" : "<span class=\"badge b-gr\">Upcoming</span>") +
-        "</div></div>";
-    }).join("") :
-    "<div class=\"empty\"><div class=\"ei\">📋</div>No bookings yet<br>" +
-    "<button class=\"btn btn-p btn-sm\" onclick=\"goPage('pg-book')\" style=\"margin-top:12px\">Book a Session</button></div>";
+  showLoading("histList", "Loading bookings...");
+  try {
+    var result = await dbCall("get_my_bookings", { parentId: USER.id });
+    CACHE.bookings = result.bookings || [];
+    var t = today();
+    el.innerHTML = CACHE.bookings.length ?
+      CACHE.bookings.map(function(b) {
+        var sess = b.sessions;
+        var past = sess && sess.date < t;
+        return "<div class=\"card\">" +
+          "<div style=\"display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px\">" +
+          "<div style=\"font-weight:700;font-size:15px\">" + (sess ? sess.name : "Session") + "</div>" +
+          "<div style=\"font-weight:800;font-size:17px;color:var(--green)\">" + gbp(b.amount) + "</div></div>" +
+          "<div style=\"font-size:13px;color:var(--muted);margin-bottom:4px\">" +
+          b.child_name + " · " + (sess ? fmtDate(sess.date) : "—") + "</div>" +
+          "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-top:8px\">" +
+          "<span style=\"font-family:monospace;font-size:11px;color:var(--muted)\">" + (b.payment_ref || "—").slice(0, 22) + "</span>" +
+          (past ? "<span class=\"badge b-gy\">Past</span>" : "<span class=\"badge b-gr\">Upcoming</span>") +
+          "</div></div>";
+      }).join("") :
+      "<div class=\"empty\"><div class=\"ei\">📋</div>No bookings yet<br>" +
+      "<button class=\"btn btn-p btn-sm\" onclick=\"goPage('pg-book')\" style=\"margin-top:12px\">Book a Session</button></div>";
+  } catch(e) {
+    el.innerHTML = "<div class=\"empty\"><div class=\"ei\">⚠</div>" + e.message + "</div>";
+  }
 }
 
 // ─── BOOKING FLOW ─────────────────────────────────────────────
-function startBook() {
+async function startBook() {
   if (!(USER.children && USER.children.length)) {
     document.getElementById("bookContent").innerHTML =
       "<div class=\"card\"><div class=\"empty\"><div class=\"ei\">👦</div>" +
@@ -1089,7 +1166,15 @@ function startBook() {
     return;
   }
   BF = { step: 1, sel: [], child: {}, parent: { first: USER.first, last: USER.last, email: USER.email, phone: USER.phone || "" }, consents: {} };
-  showStep(1);
+  showLoading("bookContent", "Loading sessions...");
+  try {
+    var result = await dbCall("get_sessions");
+    CACHE.sessions = result.sessions || [];
+    showStep(1);
+  } catch(e) {
+    document.getElementById("bookContent").innerHTML =
+      "<div class=\"card\"><div class=\"empty\"><div class=\"ei\">⚠</div>Failed to load sessions. Please try again.</div></div>";
+  }
 }
 
 function stepBar(n) {
@@ -1120,13 +1205,11 @@ function showStep(n) {
 }
 
 function step1() {
-  var t = today();
-  var up = DB.sessions.filter(function(s) { return s.date >= t; }).sort(function(a, b) { return a.date.localeCompare(b.date); });
-  if (!up.length) return "<div class=\"card\"><div class=\"empty\"><div class=\"ei\">📅</div>No upcoming sessions available.</div></div>";
+  var up = CACHE.sessions;
+  if (!up.length) return "<div class=\"card\"><div class=\"empty\"><div class=\"ei\">📅</div>No upcoming sessions available right now. Please check back soon!</div></div>";
   var html = up.map(function(s) {
-    var booked = (s.bookings || []).length;
-    var full = booked >= s.capacity;
-    var spots = s.capacity - booked;
+    var full = s.bookingCount >= s.capacity;
+    var spots = s.capacity - s.bookingCount;
     var sel = BF.sel.indexOf(s.id) > -1;
     var cls = "scard" + (sel ? " sel" : "") + (full ? " full" : "");
     var onclick = full ? "" : " onclick=\"toggleSess('" + s.id + "')\"";
@@ -1160,7 +1243,7 @@ function toggleSess(id) {
   }
   var total = 0;
   for (var i = 0; i < BF.sel.length; i++) {
-    var s = findById(DB.sessions, BF.sel[i]);
+    var s = findById(CACHE.sessions, BF.sel[i]);
     if (s) total += s.price || 0;
   }
   var el = document.getElementById("s1total");
@@ -1186,7 +1269,13 @@ function step2() {
   var medOpts = ["No","Yes – inhaler","Yes – epipen","Yes – other (specify above)"]
     .map(function(x) { return "<option" + (d.meds === x ? " selected" : "") + ">" + x + "</option>"; }).join("");
   var sel = "<select style=\"width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;\">";
+  var kidOpts = (USER.children || []).map(function(c) {
+    return "<option value=\"" + c.id + "\">" + c.first + " " + c.last + " (" + c.ageGroup + ")</option>";
+  }).join("");
   return "<div class=\"card\"><div class=\"ctitle\">Child's Details</div>" +
+    "<div class=\"fi\"><label>Select Child <span style=\"color:var(--red)\">*</span></label>" +
+    "<select id=\"b_cSel\" onchange=\"prefillChild(this.value)\" style=\"width:100%;padding:13px 14px;background:var(--card2);border:1px solid var(--border);border-radius:9px;color:var(--white);font-size:15px;outline:none;-webkit-appearance:none;\">" +
+    "<option value=\"\">Choose a child...</option>" + kidOpts + "</select></div>" +
     "<div class=\"fi2\">" +
     "<div class=\"fi\"><label>First Name <span style=\"color:var(--red)\">*</span></label><input id=\"b_cFi\" value=\"" + (d.first || "") + "\"></div>" +
     "<div class=\"fi\"><label>Last Name <span style=\"color:var(--red)\">*</span></label><input id=\"b_cLa\" value=\"" + (d.last || "") + "\"></div>" +
@@ -1206,17 +1295,30 @@ function step2() {
     "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step2Next()\">Continue</button></div></div>";
 }
 
+function prefillChild(childId) {
+  if (!childId) return;
+  var child = findById(USER.children || [], childId);
+  if (!child) return;
+  sv("b_cFi", child.first);
+  sv("b_cLa", child.last);
+  sv("b_cDb", child.dob || "");
+  sv("b_cMed", child.medical || "");
+}
+
 function step2Next() {
   var first = gv("b_cFi"), last = gv("b_cLa"), dob = gv("b_cDb");
   if (!first || !last || !dob) { toast("Please fill in required fields", "err"); return; }
-  var ags = document.querySelectorAll("#bookContent select");
+  var selEl = document.getElementById("b_cSel");
+  var childId = selEl ? selEl.value : "";
+  var selects = document.querySelectorAll("#bookContent select");
+  BF.childId = childId;
   BF.child = {
     first: first, last: last, dob: dob,
-    ageGroup: ags[0] ? ags[0].value : "U10s",
+    ageGroup: selects[1] ? selects[1].value : "U10s",
     school: gv("b_cSch"),
-    experience: ags[1] ? ags[1].value : "",
+    experience: selects[2] ? selects[2].value : "",
     medical: gv("b_cMed"),
-    meds: ags[2] ? ags[2].value : "No"
+    meds: selects[3] ? selects[3].value : "No"
   };
   showStep(3);
 }
@@ -1274,8 +1376,7 @@ function step4() {
         "<label class=\"clabel\" for=\"" + item.id + "\">" +
         (item.req ? "<span class=\"req\">*</span>" : "") + item.label + "</label></div>";
     }).join("") +
-    "<div style=\"background:rgba(0,194,224,.05);border:1px solid var(--border);border-radius:9px;padding:12px;margin-top:10px;font-size:12px;color:var(--muted)\">" +
-    "Your data is stored securely and never sold to third parties. Email info@nscperformance.co.uk to request deletion at any time.</div>" +
+    "<div style=\"background:rgba(0,194,224,.05);border:1px solid var(--border);border-radius:9px;padding:12px;margin-top:10px;font-size:12px;color:var(--muted)\">Your data is stored securely and never sold to third parties.</div>" +
     "<div style=\"display:flex;gap:10px;margin-top:14px\">" +
     "<button class=\"btn btn-g\" style=\"flex:1\" onclick=\"showStep(3)\">← Back</button>" +
     "<button class=\"btn btn-p\" style=\"flex:1\" onclick=\"step4Next()\">Review & Pay</button></div></div>";
@@ -1297,7 +1398,7 @@ function step5() {
   var total = 0;
   var lines = "";
   for (var i = 0; i < BF.sel.length; i++) {
-    var s = findById(DB.sessions, BF.sel[i]);
+    var s = findById(CACHE.sessions, BF.sel[i]);
     if (s) {
       total += s.price || 0;
       lines += "<div class=\"oline\">" +
@@ -1322,12 +1423,11 @@ function step5() {
       "<div><div style=\"font-size:13px;font-weight:600\">Secure payment via Stripe</div>" +
       "<div style=\"font-size:11px;color:var(--muted)\">256-bit SSL · PCI DSS compliant</div></div></div>" +
       "<div class=\"fi\"><label>Cardholder Name</label><input id=\"cardName\" placeholder=\"Name on card\"></div>" +
-      "<div class=\"fi\"><label>Card Number</label><div class=\"sfield\"><input id=\"cardNum\" placeholder=\"4242 4242 4242 4242\" maxlength=\"19\" oninput=\"fmtCard(this)\" inputmode=\"numeric\"></div></div>" +
+      "<div class=\"fi\"><label>Card Number</label><div class=\"sfield\"><input id=\"cardNum\" placeholder=\"Card number\" maxlength=\"19\" oninput=\"fmtCard(this)\" inputmode=\"numeric\"></div></div>" +
       "<div class=\"fi2\">" +
       "<div class=\"fi\"><label>Expiry</label><div class=\"sfield\"><input id=\"cardExp\" placeholder=\"MM / YY\" maxlength=\"7\" oninput=\"fmtExp(this)\" inputmode=\"numeric\"></div></div>" +
-      "<div class=\"fi\"><label>CVC</label><div class=\"sfield\"><input id=\"cardCvc\" placeholder=\"123\" maxlength=\"3\" inputmode=\"numeric\"></div></div>" +
-      "</div>" +
-      "<div style=\"font-size:11px;color:var(--muted);margin-top:6px\"></div></div>" +
+      "<div class=\"fi\"><label>CVC</label><div class=\"sfield\"><input id=\"cardCvc\" placeholder=\"CVC\" maxlength=\"3\" inputmode=\"numeric\"></div></div>" +
+      "</div></div>" +
       "<button class=\"btn btn-p btn-w\" id=\"payBtn\" onclick=\"processPayment(" + total + ")\">🔒 Pay " + gbp(total) + "</button>";
   }
   return "<div class=\"card\" style=\"margin-bottom:12px\">" +
@@ -1338,7 +1438,7 @@ function step5() {
     "<div class=\"ctitle\">Registration Summary</div>" +
     "<div class=\"dr\"><div class=\"dk\">Child</div><div class=\"dv\">" + cd.first + " " + cd.last + " (" + cd.ageGroup + ")</div></div>" +
     "<div class=\"dr\"><div class=\"dk\">Parent</div><div class=\"dv\">" + pd.first + " " + pd.last + "</div></div>" +
-    "<div class=\"dr\"><div class=\"dk\">Contact</div><div class=\"dv\">" + pd.email + "<br>" + pd.phone + "</div></div>" +
+    "<div class=\"dr\"><div class=\"dk\">Contact</div><div class=\"dv\">" + pd.email + "</div></div>" +
     (cd.medical && cd.medical.toLowerCase() !== "none" ?
       "<div class=\"dr\"><div class=\"dk\">Medical</div><div class=\"dv\" style=\"color:var(--amber)\">⚠ " + cd.medical + "</div></div>" : "") +
     "</div>" +
@@ -1373,7 +1473,7 @@ async function processPayment(total) {
   try {
     var cd = BF.child, pd = BF.parent;
     var sessNames = BF.sel.map(function(id) {
-      var s = findById(DB.sessions, id);
+      var s = findById(CACHE.sessions, id);
       return s ? s.name : id;
     }).join(", ");
     var res = await fetch("/.netlify/functions/create-payment", {
@@ -1394,12 +1494,7 @@ async function processPayment(total) {
     var expParts = exp.replace(" ", "").split("/");
     var result = await stripe.confirmCardPayment(data.clientSecret, {
       payment_method: {
-        card: {
-          number: num,
-          exp_month: parseInt(expParts[0]),
-          exp_year: parseInt("20" + expParts[1]),
-          cvc: cvc
-        },
+        card: { number: num, exp_month: parseInt(expParts[0]), exp_year: parseInt("20" + expParts[1]), cvc: cvc },
         billing_details: { name: name, email: pd.email }
       }
     });
@@ -1416,56 +1511,67 @@ async function finaliseBooking(amount, method, ref) {
   var cd = BF.child, pd = BF.parent;
   var childName = cd.first + " " + cd.last;
   var parentName = pd.first + " " + pd.last;
-  var t = new Date().toISOString().split("T")[0];
-  var existing = findById(DB.players, "");
-  existing = null;
-  for (var i = 0; i < DB.players.length; i++) {
-    if (DB.players[i].first === cd.first && DB.players[i].last === cd.last) { existing = DB.players[i]; break; }
-  }
-  if (!existing) {
-    DB.players.push({ id: uid(), first: cd.first, last: cd.last, dob: cd.dob, ageGroup: cd.ageGroup,
-      parent: parentName, email: pd.email, phone: pd.phone, medical: cd.medical, status: "active" });
-  }
   var sessDetails = [];
-  for (var i = 0; i < BF.sel.length; i++) {
-    var s = findById(DB.sessions, BF.sel[i]);
-    if (s) {
-      sessDetails.push({ name: s.name, date: fmtDate(s.date), time: fmtTime(s.time), location: s.location, price: s.price || 0 });
-      DB.payments.push({ id: uid(), childName: childName, parentName: parentName, parentEmail: pd.email,
-        sessionId: s.id, sessionName: s.name, amount: s.price || 0, status: "paid", method: method, ref: ref + "_" + s.id, date: t });
-    }
-  }
   try {
-    await fetch("/.netlify/functions/send-confirmation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parentName: parentName, parentEmail: pd.email, childName: childName,
-        childAge: cd.ageGroup, sessions: sessDetails, totalPaid: amount, paymentRef: ref, medicalNotes: cd.medical || "None" })
-    });
-  } catch (e) { console.warn("Email failed:", e.message); }
-  var sessList = BF.sel.map(function(id) {
-    var s = findById(DB.sessions, id);
-    return s ? "• " + s.name + " — " + fmtDate(s.date) + " at " + fmtTime(s.time) : "";
-  }).join("<br>");
-  document.getElementById("bookContent").innerHTML =
-    "<div class=\"card\" style=\"text-align:center\">" +
-    "<div style=\"font-size:60px;margin-bottom:14px\">🎉</div>" +
-    "<div style=\"font-weight:800;font-size:28px;margin-bottom:6px\">Booking Confirmed!</div>" +
-    "<div style=\"font-size:14px;color:var(--muted);margin-bottom:20px\">" + childName + "'s place is secured.</div>" +
-    "<div style=\"background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;margin-bottom:16px;text-align:left\">" +
-    "<div style=\"font-weight:700;margin-bottom:8px;font-size:14px\">Sessions Booked:</div>" +
-    "<div style=\"font-size:13px;color:var(--text);line-height:2.2\">" + sessList + "</div></div>" +
-    (amount > 0 ?
-      "<div style=\"font-weight:800;font-size:26px;color:var(--green);margin-bottom:4px\">" + gbp(amount) + " paid</div>" +
-      "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">A confirmation email has been sent to " + pd.email + "</div>" :
-      "<div style=\"font-size:13px;color:var(--muted);margin-bottom:16px\">Free session — no payment required</div>") +
-    "<div style=\"background:rgba(0,194,224,.06);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:13px;color:var(--text);text-align:left;margin-bottom:18px\">" +
-    "📧 Check your email for full session details.<br>⚽ Please bring boots, shin pads and water.<br>📞 Questions? info@nscperformance.co.uk</div>" +
-    "<button class=\"btn btn-p btn-w\" onclick=\"goPage('pg-phome')\">Back to Home</button>" +
-    "<button class=\"btn btn-g btn-w\" style=\"margin-top:8px\" onclick=\"goPage('pg-hist')\">View My Bookings</button></div>";
+    for (var i = 0; i < BF.sel.length; i++) {
+      var s = findById(CACHE.sessions, BF.sel[i]);
+      if (s) {
+        sessDetails.push({ name: s.name, date: fmtDate(s.date), time: fmtTime(s.time), location: s.location, price: s.price || 0 });
+        await dbCall("create_booking", {
+          parentId: USER.id,
+          childId: BF.childId || "",
+          sessionId: s.id,
+          childName: childName,
+          parentName: parentName,
+          parentEmail: pd.email,
+          sessionName: s.name,
+          amount: s.price || 0,
+          method: method,
+          ref: ref + "_" + s.id,
+          paymentIntentId: ref,
+          consents: BF.consents
+        });
+      }
+    }
+    // Send confirmation emails
+    try {
+      await fetch("/.netlify/functions/send-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parentName: parentName, parentEmail: pd.email,
+          childName: childName, childAge: cd.ageGroup,
+          sessions: sessDetails, totalPaid: amount,
+          paymentRef: ref, medicalNotes: cd.medical || "None"
+        })
+      });
+    } catch (e) { console.warn("Email failed:", e.message); }
+    var sessList = BF.sel.map(function(id) {
+      var s = findById(CACHE.sessions, id);
+      return s ? "• " + s.name + " — " + fmtDate(s.date) + " at " + fmtTime(s.time) : "";
+    }).join("<br>");
+    document.getElementById("bookContent").innerHTML =
+      "<div class=\"card\" style=\"text-align:center\">" +
+      "<div style=\"font-size:60px;margin-bottom:14px\">🎉</div>" +
+      "<div style=\"font-weight:800;font-size:28px;margin-bottom:6px\">Booking Confirmed!</div>" +
+      "<div style=\"font-size:14px;color:var(--muted);margin-bottom:20px\">" + childName + "'s place is secured.</div>" +
+      "<div style=\"background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;margin-bottom:16px;text-align:left\">" +
+      "<div style=\"font-weight:700;margin-bottom:8px;font-size:14px\">Sessions Booked:</div>" +
+      "<div style=\"font-size:13px;color:var(--text);line-height:2.2\">" + sessList + "</div></div>" +
+      (amount > 0 ?
+        "<div style=\"font-weight:800;font-size:26px;color:var(--green);margin-bottom:4px\">" + gbp(amount) + " paid</div>" +
+        "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">A confirmation email has been sent to " + pd.email + "</div>" :
+        "<div style=\"font-size:13px;color:var(--muted);margin-bottom:16px\">Free session — no payment required</div>") +
+      "<div style=\"background:rgba(0,194,224,.06);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:13px;color:var(--text);text-align:left;margin-bottom:18px\">" +
+      "📧 Check your email for full session details.<br>⚽ Please bring boots, shin pads and water.<br>📞 Questions? info@nscperformance.co.uk</div>" +
+      "<button class=\"btn btn-p btn-w\" onclick=\"goPage('pg-phome')\">Back to Home</button>" +
+      "<button class=\"btn btn-g btn-w\" style=\"margin-top:8px\" onclick=\"goPage('pg-hist')\">View My Bookings</button></div>";
+  } catch(e) {
+    toast("Booking saved but there was an issue: " + e.message, "err");
+  }
 }
 
-// ─── LOAD STRIPE AFTER APP IS READY ───────────────────────────
+// ─── LOAD STRIPE IN BACKGROUND ───────────────────────────────
 window.addEventListener("load", function() {
   var s = document.createElement("script");
   s.src = "https://js.stripe.com/v3/";
