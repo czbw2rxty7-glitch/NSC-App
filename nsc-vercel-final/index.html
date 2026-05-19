@@ -216,19 +216,22 @@ body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMa
   <div class="lform">
     <!-- PARENT -->
     <div id="panelParent">
-      <div id="signInView" novalidate>
+      <div id="signInView">
+        <form novalidate onsubmit="parentLogin();return false;">
         <div class="lcard">
           <div class="ltitle">Sign In</div>
           <div class="fi"><label>Email</label><input type="text" id="pl_email" placeholder="you@example.com" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
           <div class="fi"><label>Password</label><input type="text" id="pl_pass" placeholder="Enter your password" class="fake-pass" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"></div>
           <div class="errmsg" id="pl_err">Incorrect email or password.</div>
-          <button class="btn btn-p btn-w" onclick="parentLogin()">Sign In</button>
+          <button type="button" class="btn btn-p btn-w" onclick="parentLogin()">Sign In</button>
         </div>
+        </form>
         <div class="sep">New to NSC Performance?</div>
         <button class="btn btn-g btn-w" onclick="showReg()">Create Account</button>
 
       </div>
       <div id="registerView" style="display:none">
+        <form novalidate onsubmit="parentRegister();return false;">
         <div class="lcard">
           <div class="ltitle">Create Account</div>
           <div class="fi2">
@@ -248,14 +251,16 @@ body{background:var(--navy);color:var(--white);font-family:-apple-system,BlinkMa
     </div>
 
     <!-- STAFF -->
-    <div id="panelStaff" style="display:none" novalidate>
+    <div id="panelStaff" style="display:none">
+      <form novalidate onsubmit="staffLogin();return false;">
       <div class="lcard">
         <div class="ltitle">Staff Sign In</div>
-        <div class="fi"><label>Username</label><input id="sl_user" placeholder="Staff username" autocomplete="off"></div>
+        <div class="fi"><label>Username</label><input id="sl_user" placeholder="Staff username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
         <div class="fi"><label>Password</label><input type="text" id="sl_pass" placeholder="Enter password" class="fake-pass" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off"></div>
         <div class="errmsg" id="sl_err">Incorrect username or password.</div>
-        <button class="btn btn-p btn-w" onclick="staffLogin()">Sign In</button>
+        <button type="button" class="btn btn-p btn-w" onclick="staffLogin()">Sign In</button>
       </div>
+      </form>
 
     </div>
   </div>
