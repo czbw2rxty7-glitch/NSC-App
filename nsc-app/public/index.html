@@ -210,8 +210,8 @@ tr:hover td{background:var(--card-hover)}
 .part-meta{font-size:12px;color:var(--text-muted);line-height:1.7}
 
 /* ── RESPONSIVE ── */
-@media(max-width:768px){
-  #sidebar{display:none}
+@media(max-width:900px){
+  #sidebar{display:none!important;width:0!important;min-width:0!important}
   #mob-header{display:flex}
   #mob-nav{display:block}
   #main{padding-bottom:70px}
@@ -221,6 +221,10 @@ tr:hover td{background:var(--card-hover)}
   .steps .step{font-size:9px;padding:10px 4px}
   .step-num{font-size:14px}
   .stats-grid{grid-template-columns:1fr 1fr}
+}
+@media(min-width:901px){
+  #mob-header{display:none!important}
+  #mob-nav{display:none!important}
 }
 </style>
 </head>
@@ -564,7 +568,7 @@ var _editSessId = null;
 
 // ── STRIPE PUBLISHABLE KEY ─────────────────────────────────────
 // Replace this with your actual Stripe publishable key:
-var STRIPE_PK = 'pk_live_51TUYv89gt2JjCopLZEUHWaoYrGQV9dS6tl65CocQUge51HABmQvMrxxquTld0rTyepivnNtrfJXAUGa2F0lWi3Tn00r5FEmHSv';
+var STRIPE_PK = 'pk_live_REPLACE_WITH_YOUR_STRIPE_PUBLISHABLE_KEY';
 
 // ── UTILS ─────────────────────────────────────────────────────
 function gbp(v) { return '£' + parseFloat(v || 0).toFixed(2); }
