@@ -38,6 +38,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);font-size:
 /* ── LAYOUT ── */
 #app{display:flex;height:100vh;overflow:hidden}
 #sidebar{width:220px;min-width:220px;background:var(--navy2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;transition:transform .25s ease}
+@media(max-width:900px){#sidebar{display:none!important;width:0!important;min-width:0!important;max-width:0!important;overflow:hidden!important;border:none!important}}
 #main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
 .view{display:none;flex:1;padding:24px;animation:fadeIn .2s ease}
 .view.active{display:block}
