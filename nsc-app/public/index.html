@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NSC Performance — Booking Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0D1B2A;
+  --navy2: #162335;
+  --navy3: #1e3050;
+  --cyan: #00C2E0;
+  --cyan2: #00BFFF;
+  --cyan-dim: rgba(0,194,224,0.12);
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.1);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.1);
+  --amber: #f59e0b;
+  --amber-dim: rgba(245,158,11,0.1);
+  --text: #e2eaf2;
+  --text-muted: #7a9ab8;
+  --border: rgba(255,255,255,0.07);
+  --card: rgba(255,255,255,0.04);
+  --card-hover: rgba(255,255,255,0.07);
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --font: 'Barlow', sans-serif;
+  --font-cond: 'Barlow Condensed', sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--navy);color:var(--text);font-size:15px;-webkit-font-smoothing:antialiased}
+
+/* ── LAYOUT ── */
+#app{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:220px;min-width:220px;background:var(--navy2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;transition:transform .25s ease}
+#main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.view{display:none;flex:1;padding:24px;animation:fadeIn .2s ease}
+.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SIDEBAR ── */
+.logo-wrap{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.logo-img{width:100%;max-height:60px;object-fit:contain;filter:brightness(1.1)}
+.logo-text{font-family:var(--font-cond);font-size:22px;font-weight:900;color:var(--cyan);letter-spacing:1px;text-align:center;margin-top:8px}
+.logo-sub{font-size:11px;color:var(--text-muted);text-align:center;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.nav-section{padding:12px 10px 4px;font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-muted);margin:2px 6px;transition:all .15s;border:none;background:none;width:calc(100% - 12px);text-align:left}
+.nav-item:hover{background:var(--card-hover);color:var(--text)}
+.nav-item.active{background:var(--cyan-dim);color:var(--cyan)}
+.nav-item .ico{font-size:17px;width:20px;text-align:center}
+.nav-spacer{flex:1}
+.user-bar{padding:12px 10px;border-top:1px solid var(--border)}
+.user-info{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--card)}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--cyan-dim);border:1.5px solid var(--cyan);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--cyan);flex-shrink:0}
+.user-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.2}
+.user-role{font-size:11px;color:var(--text-muted)}
+.btn-logout{width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:13px;cursor:pointer;transition:all .15s}
+.btn-logout:hover{background:var(--red-dim);color:var(--red);border-color:var(--red)}
+
+/* ── TOP BAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap}
+.topbar-left .page-title{font-family:var(--font-cond);font-size:28px;font-weight:900;color:var(--text);line-height:1}
+.topbar-left .page-sub{font-size:13px;color:var(--text-muted);margin-top:2px}
+.topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:14px;font-weight:700;transition:all .15s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--cyan);color:var(--navy);padding:10px 20px}
+.btn-primary:hover{background:#00d4f5;transform:translateY(-1px)}
+.btn-ghost{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--card-hover)}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,0.2)}
+.btn-danger:hover{background:rgba(239,68,68,0.2)}
+.btn-success{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.2)}
+.btn-success:hover{background:rgba(34,197,94,0.2)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-w{width:100%;justify-content:center}
+.btn-p{background:var(--cyan);color:var(--navy)}
+.btn-p:hover{background:#00d4f5}
+.btn-g{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.2)}
+.btn-g:hover{background:rgba(34,197,94,0.2)}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.card-title{font-family:var(--font-cond);font-size:16px;font-weight:800;color:var(--text);letter-spacing:0.5px;margin-bottom:14px;text-transform:uppercase}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;text-align:center}
+.stat-val{font-family:var(--font-cond);font-size:36px;font-weight:900;color:var(--cyan);line-height:1}
+.stat-label{font-size:12px;color:var(--text-muted);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.form-input{width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font);font-size:14px;transition:border .15s;outline:none}
+.form-input:focus{border-color:var(--cyan);background:rgba(0,194,224,0.05)}
+select.form-input option{background:#1e3050;color:var(--text)}
+textarea.form-input{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px}
+.badge-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.25)}
+.badge-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,0.25)}
+.badge-amber{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,0.25)}
+.badge-cyan{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(0,194,224,0.25)}
+
+/* ── TABLES ── */
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border)}
+td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--card-hover)}
+
+/* ── SESSION CARDS ── */
+.sess-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:12px;cursor:pointer;transition:all .15s;position:relative}
+.sess-card:hover,.sess-card.selected{border-color:var(--cyan);background:var(--cyan-dim)}
+.sess-card.selected::after{content:'✓';position:absolute;top:14px;right:14px;width:22px;height:22px;border-radius:50%;background:var(--cyan);color:var(--navy);font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.sess-name{font-weight:800;font-size:15px;color:var(--text);margin-bottom:6px}
+.sess-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--text-muted)}
+.sess-meta span{display:flex;align-items:center;gap:4px}
+.sess-price{font-family:var(--font-cond);font-size:22px;font-weight:900;color:var(--cyan);margin-top:8px}
+
+/* ── STEP PROGRESS ── */
+.steps{display:flex;gap:0;margin-bottom:28px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.step{flex:1;padding:12px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:0.5px;text-transform:uppercase;border-right:1px solid var(--border);transition:all .2s;position:relative}
+.step:last-child{border-right:none}
+.step.active{background:var(--cyan-dim);color:var(--cyan)}
+.step.done{background:var(--green-dim);color:var(--green)}
+.step-num{display:block;font-size:18px;font-weight:900;margin-bottom:2px;font-family:var(--font-cond)}
+
+/* ── PAYMENT ── */
+.stripe-wrap{background:rgba(255,255,255,0.06);border:1.5px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;min-height:48px;transition:border .15s}
+.stripe-wrap.focused{border-color:var(--cyan)}
+.payment-total{background:var(--cyan-dim);border:1px solid rgba(0,194,224,0.3);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.payment-total-label{font-size:13px;font-weight:700;color:var(--cyan)}
+.payment-total-amount{font-family:var(--font-cond);font-size:32px;font-weight:900;color:var(--cyan)}
+.secure-note{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);margin-bottom:20px;justify-content:center}
+.pay-spinner{display:none;width:18px;height:18px;border:2px solid rgba(13,27,42,0.3);border-top-color:var(--navy);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.login-box{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:36px;width:100%;max-width:400px;box-shadow:var(--shadow)}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-title{font-family:var(--font-cond);font-size:26px;font-weight:900;color:var(--text);text-align:center;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:28px}
+.login-tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:24px}
+.login-tab{flex:1;padding:9px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text-muted);transition:all .15s}
+.login-tab.active{background:var(--cyan-dim);color:var(--cyan)}
+.err-msg{display:none;background:var(--red-dim);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:14px}
+.err-msg.show{display:block}
+.register-link{text-align:center;margin-top:16px;font-size:13px;color:var(--text-muted)}
+.register-link a{color:var(--cyan);cursor:pointer;font-weight:700;text-decoration:none}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px;backdrop-filter:blur(4px)}
+.modal{background:var(--navy2);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow)}
+.modal-title{font-family:var(--font-cond);font-size:22px;font-weight:900;color:var(--text);margin-bottom:20px}
+.modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy2);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;color:var(--text);z-index:999;transition:transform .25s ease;box-shadow:var(--shadow);white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.t-err{border-color:rgba(239,68,68,0.5);color:var(--red)}
+#toast.t-ok{border-color:rgba(34,197,94,0.5);color:var(--green)}
+
+/* ── CONSENT ── */
+.consent-block{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.consent-row{display:flex;align-items:flex-start;gap:12px}
+.consent-check{width:18px;height:18px;margin-top:1px;accent-color:var(--cyan);flex-shrink:0;cursor:pointer}
+.consent-text{font-size:13px;color:var(--text-muted);line-height:1.5}
+.consent-text strong{color:var(--text)}
+
+/* ── MOBILE ── */
+#mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy2);border-top:1px solid var(--border);z-index:50}
+.mob-nav-inner{display:flex;justify-content:space-around;padding:8px 0 env(safe-area-inset-bottom,8px)}
+.mob-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.5px;text-transform:uppercase;border:none;background:none;min-width:60px;transition:all .15s}
+.mob-nav-item .ico{font-size:20px}
+.mob-nav-item.active{color:var(--cyan)}
+#mob-header{display:none;padding:12px 16px;background:var(--navy2);border-bottom:1px solid var(--border);align-items:center;justify-content:space-between;gap:12px}
+.mob-menu-btn{background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;padding:4px}
+#mob-sidebar{position:fixed;inset:0;z-index:150;display:none}
+#mob-sidebar.open{display:block}
+.mob-sidebar-bg{position:absolute;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(2px)}
+.mob-sidebar-inner{position:absolute;left:0;top:0;bottom:0;width:240px;background:var(--navy2);border-right:1px solid var(--border);overflow-y:auto;padding-bottom:20px}
+
+/* ── EMPTY STATES ── */
+.empty{text-align:center;padding:40px 20px;color:var(--text-muted)}
+.empty-ico{font-size:40px;margin-bottom:12px}
+.empty-txt{font-size:14px}
+
+/* ── BOOKING HISTORY ── */
+.booking-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.booking-item-left .b-name{font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px}
+.booking-item-left .b-meta{font-size:12px;color:var(--text-muted)}
+.booking-item-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+
+/* ── PARTICIPANT CARD ── */
+.part-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.part-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.part-name{font-weight:800;font-size:15px;color:var(--text)}
+.part-meta{font-size:12px;color:var(--text-muted);line-height:1.7}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  #sidebar{display:none}
+  #mob-header{display:flex}
+  #mob-nav{display:block}
+  #main{padding-bottom:70px}
+  .view{padding:16px}
+  .grid-2{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+  .steps .step{font-size:9px;padding:10px 4px}
+  .step-num{font-size:14px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="logo.png" alt="NSC Performance" style="max-height:70px;max-width:160px;object-fit:contain" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='block'">
+      <div id="logo-fallback" style="display:none;font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:#00C2E0;letter-spacing:2px">NSC</div>
+    </div>
+    <div class="login-title">NSC Performance</div>
+    <div class="login-sub">Book sessions · Track progress · Manage players</div>
+
+    <div class="login-tabs" id="loginTabs">
+      <div class="login-tab active" onclick="switchLoginTab('parent')" id="tab-parent">Parent / Guardian</div>
+      <div class="login-tab" onclick="switchLoginTab('staff')" id="tab-staff">Staff</div>
+    </div>
+
+    <!-- Parent login -->
+    <div id="panel-parent">
+      <div class="err-msg" id="err-parent"></div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input class="form-input" id="p-email" type="email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="p-pass" type="password" placeholder="Password" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-w" type="button" onclick="parentLogin()">Sign In as Parent</button>
+      <div class="register-link">Don't have an account? <a onclick="showRegister()">Register here</a></div>
+    </div>
+
+    <!-- Staff login -->
+    <div id="panel-staff" style="display:none">
+      <div class="err-msg" id="err-staff"></div>
+      <div class="form-group">
+        <label class="form-label">Staff Username</label>
+        <input class="form-input" id="s-user" type="text" placeholder="Staff username" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="s-pass" type="password" placeholder="Staff password" autocomplete="off">
+      </div>
+      <button class="btn btn-primary btn-w" type="button" onclick="staffLogin()">Sign In as Staff</button>
+    </div>
+  </div>
+</div>
+
+<!-- Register modal -->
+<div class="modal-overlay" id="m-register" style="display:none">
+  <div class="modal">
+    <div class="modal-title">Create Parent Account</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="r-first" placeholder="First name"></div>
+      <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="r-last" placeholder="Last name"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" id="r-email" type="email" placeholder="your@email.com"></div>
+    <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" id="r-phone" type="tel" placeholder="07xxx xxxxxx"></div>
+    <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="r-pass" type="password" placeholder="Minimum 6 characters"></div>
+    <div class="err-msg" id="err-reg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal('m-register')">Cancel</button>
+      <button class="btn btn-primary" type="button" onclick="doRegister()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app" style="display:none">
+  <!-- Mobile header -->
+  <div id="mob-header">
+    <button class="mob-menu-btn" onclick="toggleMobSidebar()">☰</button>
+    <div style="font-family:var(--font-cond);font-size:18px;font-weight:900;color:var(--cyan)">NSC Performance</div>
+    <div style="width:30px"></div>
+  </div>
+
+  <!-- Mobile sidebar overlay -->
+  <div id="mob-sidebar">
+    <div class="mob-sidebar-bg" onclick="toggleMobSidebar()"></div>
+    <div class="mob-sidebar-inner" id="mob-sidebar-inner"></div>
+  </div>
+
+  <!-- Desktop sidebar -->
+  <div id="sidebar">
+    <div class="logo-wrap">
+      <img src="logo.png" alt="NSC" class="logo-img" onerror="this.style.display='none';document.getElementById('sb-logo-text').style.display='block'">
+      <div id="sb-logo-text" style="display:none;font-family:var(--font-cond);font-size:28px;font-weight:900;color:var(--cyan);text-align:center">NSC</div>
+      <div class="logo-sub">Performance Portal</div>
+    </div>
+    <div id="sidebar-nav"></div>
+    <div class="nav-spacer"></div>
+    <div class="user-bar">
+      <div class="user-info">
+        <div class="user-avatar" id="sb-avatar">?</div>
+        <div>
+          <div class="user-name" id="sb-name">—</div>
+          <div class="user-role" id="sb-role">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" type="button" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Views -->
+  <div id="main">
+    <!-- PARENT: Home -->
+    <div class="view" id="v-parent-home">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title" id="ph-greeting">Welcome</div><div class="page-sub">Book sessions for your child</div></div>
+        <div class="topbar-actions"><button class="btn btn-primary" type="button" onclick="startBooking()">⚽ Book a Session</button></div>
+      </div>
+      <div class="stats-grid" id="ph-stats"></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-title">My Children</div><div id="ph-children"></div></div>
+        <div class="card"><div class="card-title">Recent Bookings</div><div id="ph-bookings"></div></div>
+      </div>
+    </div>
+
+    <!-- PARENT: Book Flow -->
+    <div class="view" id="v-book-flow">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">Book a Session</div><div class="page-sub">Complete registration &amp; payment</div></div>
+        <div class="topbar-actions"><button class="btn btn-ghost btn-sm" type="button" onclick="goView('parent-home')">← Back</button></div>
+      </div>
+      <div class="steps">
+        <div class="step active" id="step-1"><span class="step-num">1</span>Session</div>
+        <div class="step" id="step-2"><span class="step-num">2</span>Child</div>
+        <div class="step" id="step-3"><span class="step-num">3</span>Details</div>
+        <div class="step" id="step-4"><span class="step-num">4</span>Consents</div>
+        <div class="step" id="step-5"><span class="step-num">5</span>Payment</div>
+      </div>
+      <div id="book-content"></div>
+    </div>
+
+    <!-- PARENT: History -->
+    <div class="view" id="v-parent-history">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">My Bookings</div><div class="page-sub">All sessions booked for your children</div></div>
+      </div>
+      <div id="hist-list"></div>
+    </div>
+
+    <!-- PARENT: Account -->
+    <div class="view" id="v-parent-account">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">My Account</div><div class="page-sub">Manage children &amp; account details</div></div>
+        <div class="topbar-actions"><button class="btn btn-primary" type="button" onclick="showAddChild()">+ Add Child</button></div>
+      </div>
+      <div class="card"><div class="card-title">Parent Details</div><div id="acct-details"></div></div>
+      <div class="card"><div class="card-title">Children on Account</div><div id="acct-children"></div></div>
+    </div>
+
+    <!-- STAFF: Dashboard -->
+    <div class="view" id="v-staff-dash">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">Staff Dashboard</div><div class="page-sub">NSC Performance Overview</div></div>
+        <div class="topbar-actions"><button class="btn btn-primary" type="button" onclick="showAddSession()">+ Add Session</button></div>
+      </div>
+      <div class="stats-grid" id="staff-stats"></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-title">Upcoming Sessions</div><div id="staff-upcoming"></div></div>
+        <div class="card"><div class="card-title">Recent Bookings</div><div id="staff-recent"></div></div>
+      </div>
+    </div>
+
+    <!-- STAFF: Sessions -->
+    <div class="view" id="v-staff-sessions">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">Sessions</div><div class="page-sub">Manage all available sessions</div></div>
+        <div class="topbar-actions"><button class="btn btn-primary" type="button" onclick="showAddSession()">+ Add Session</button></div>
+      </div>
+      <div id="sessions-list"></div>
+    </div>
+
+    <!-- STAFF: Players -->
+    <div class="view" id="v-staff-players">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">Participants</div><div class="page-sub">All registered players</div></div>
+      </div>
+      <div id="players-list"></div>
+    </div>
+
+    <!-- STAFF: Attendance -->
+    <div class="view" id="v-staff-attendance">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">Attendance</div><div class="page-sub">Track session attendance</div></div>
+      </div>
+      <div class="form-group" style="max-width:360px;margin-bottom:20px">
+        <label class="form-label">Select Session</label>
+        <select class="form-input" id="att-session" onchange="loadAttendance()"></select>
+      </div>
+      <div id="att-list"></div>
+    </div>
+
+    <!-- STAFF: Account -->
+    <div class="view" id="v-staff-account">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">Staff Account</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stripe Setup Info</div>
+        <div style="font-size:14px;color:var(--text);line-height:1.8">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">UK card fee</span><span style="color:var(--cyan);font-weight:700">1.4% + 20p</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">£5 session</span><span style="color:var(--cyan);font-weight:700">~27p fee → £4.73 received</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">£25 holiday camp</span><span style="color:var(--cyan);font-weight:700">~55p fee → £24.45 received</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:var(--text-muted)">Payouts</span><span style="color:var(--green);font-weight:700">Direct to bank account</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Environment Variables Required</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:2;font-family:monospace">
+          STRIPE_SECRET_KEY = sk_live_...<br>
+          STRIPE_PUBLISHABLE_KEY = pk_live_...<br>
+          EMAIL_HOST = smtp.123-reg.co.uk<br>
+          EMAIL_PORT = 465<br>
+          EMAIL_USER = info@nscperformance.co.uk<br>
+          EMAIL_PASS = (your email password)<br>
+          STAFF_EMAIL = info@nscperformance.co.uk
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile nav -->
+  <nav id="mob-nav"><div class="mob-nav-inner" id="mob-nav-inner"></div></nav>
+</div>
+
+<!-- Add Child Modal -->
+<div class="modal-overlay" id="m-child" style="display:none">
+  <div class="modal">
+    <div class="modal-title">Add a Child</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="c-first" placeholder="First name"></div>
+      <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="c-last" placeholder="Last name"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-input" id="c-dob" type="date"></div>
+      <div class="form-group"><label class="form-label">Age Group</label>
+        <select class="form-input" id="c-age">
+          <option>U6s</option><option>U7s</option><option>U8s</option><option>U9s</option><option>U10s</option><option>U11s</option><option>U12s</option><option>U13s</option><option>U14s</option><option>U15s</option><option>U16s</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Medical Notes / Allergies</label><textarea class="form-input" id="c-medical" placeholder="Any allergies, medical conditions or special requirements for NSC staff to be aware of…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal('m-child')">Cancel</button>
+      <button class="btn btn-primary" type="button" onclick="saveChild()">Add Child</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Session Modal -->
+<div class="modal-overlay" id="m-session" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="m-sess-title">Add Session</div>
+    <div class="form-group"><label class="form-label">Session Name</label><input class="form-input" id="sess-name" placeholder="e.g. Tuesday Youth Football"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="sess-date" type="date"></div>
+      <div class="form-group"><label class="form-label">Time</label><input class="form-input" id="sess-time" type="time"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Location</label><input class="form-input" id="sess-loc" placeholder="e.g. Harlow Town FC, Third Avenue"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Type</label>
+        <select class="form-input" id="sess-type">
+          <option>Youth Football</option><option>Holiday Camp</option><option>After School Club</option><option>School PE</option><option>Tournament</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Age Group</label>
+        <select class="form-input" id="sess-age">
+          <option>Mixed</option><option>U6s</option><option>U7s</option><option>U8s</option><option>U9s</option><option>U10s</option><option>U11s</option><option>U12s</option><option>U13s</option><option>U14s</option><option>U15s</option><option>U16s</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Price (£)</label><input class="form-input" id="sess-price" type="number" min="0" step="0.50" placeholder="5.00"></div>
+      <div class="form-group"><label class="form-label">Max Capacity</label><input class="form-input" id="sess-cap" type="number" min="1" placeholder="20"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes for Parents</label><textarea class="form-input" id="sess-notes" placeholder="e.g. Bring boots, shin pads and water…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal('m-session')">Cancel</button>
+      <button class="btn btn-primary" type="button" onclick="saveSession()">Save Session</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// NSC PERFORMANCE APP — Complete with Stripe Card Payments
+// ═══════════════════════════════════════════════════════════════
+
+// ── DATA STORE (localStorage) ─────────────────────────────────
+var STORE_KEY = 'nsc_data_v3';
+var DB = load();
+
+function load() {
+  try {
+    var d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d && d.sessions) return d;
+  } catch(e) {}
+  return defaultDB();
+}
+
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } catch(e) {}
+}
+
+function defaultDB() {
+  var today = new Date();
+  function addDays(n) {
+    var d = new Date(today); d.setDate(d.getDate() + n);
+    return d.toISOString().split('T')[0];
+  }
+  return {
+    sessions: [
+      {id:'s1',name:'Tuesday Youth Football',type:'Youth Football',date:addDays(4),time:'18:00',location:'Harlow Town FC, Third Avenue, Harlow',ageGroup:'Mixed',capacity:20,price:5,notes:'Bring boots, shin pads and water.',bookings:[]},
+      {id:'s2',name:'Saturday Junior Training',type:'Youth Football',date:addDays(7),time:'10:00',location:'Latton Bush Leisure Centre, Harlow',ageGroup:'U10s',capacity:16,price:5,notes:'',bookings:[]},
+      {id:'s3',name:'Summer Holiday Camp — Day 1',type:'Holiday Camp',date:addDays(30),time:'09:00',location:'Harlow Town FC, Third Avenue, Harlow',ageGroup:'Mixed',capacity:30,price:25,notes:'Full day — bring packed lunch and plenty of water.',bookings:[]},
+      {id:'s4',name:'Friday Evening Skills',type:'Youth Football',date:addDays(11),time:'17:30',location:'Latton Bush Leisure Centre, Harlow',ageGroup:'U8s',capacity:18,price:5,notes:'Parents welcome to watch.',bookings:[]}
+    ],
+    parents: [
+      {id:'staff001',email:'staff@nscperformance.co.uk',pass:'nsc2024',name:'NSC Staff',phone:'',isStaff:true}
+    ],
+    players: [],
+    bookings: [],
+    attendance: {}
+  };
+}
+
+// ── CURRENT STATE ─────────────────────────────────────────────
+var currentUser = null;
+var bookState = {};
+var _stripe = null;
+var _cardElement = null;
+var _editSessId = null;
+
+// ── STRIPE PUBLISHABLE KEY ─────────────────────────────────────
+// Replace this with your actual Stripe publishable key:
+var STRIPE_PK = 'pk_live_REPLACE_WITH_YOUR_STRIPE_PUBLISHABLE_KEY';
+
+// ── UTILS ─────────────────────────────────────────────────────
+function gbp(v) { return '£' + parseFloat(v || 0).toFixed(2); }
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  } catch(e) { return d; }
+}
+function fmtTime(t) {
+  if (!t) return '';
+  try { var p = t.split(':'); return (parseInt(p[0]) % 12 || 12) + ':' + p[1] + (parseInt(p[0]) >= 12 ? 'pm' : 'am'); } catch(e) { return t; }
+}
+function uid() { return '_' + Math.random().toString(36).substr(2, 9); }
+function toast(msg, type) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type === 'err' ? ' t-err' : type === 'ok' ? ' t-ok' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(function() { el.className = ''; }, 3000);
+}
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function esc(s) { return String(s||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+
+// ── STRIPE LOAD ───────────────────────────────────────────────
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://js.stripe.com/v3/';
+  s.async = true;
+  s.onload = function() {
+    if (STRIPE_PK && STRIPE_PK.indexOf('REPLACE') === -1) {
+      _stripe = Stripe(STRIPE_PK);
+    }
+  };
+  document.head.appendChild(s);
+})();
+
+// ── LOGIN ─────────────────────────────────────────────────────
+function switchLoginTab(tab) {
+  document.getElementById('panel-parent').style.display = tab === 'parent' ? 'block' : 'none';
+  document.getElementById('panel-staff').style.display = tab === 'staff' ? 'block' : 'none';
+  document.getElementById('tab-parent').className = 'login-tab' + (tab === 'parent' ? ' active' : '');
+  document.getElementById('tab-staff').className = 'login-tab' + (tab === 'staff' ? ' active' : '');
+}
+
+function parentLogin() {
+  var email = document.getElementById('p-email').value.trim().toLowerCase();
+  var pass = document.getElementById('p-pass').value;
+  var errEl = document.getElementById('err-parent');
+  errEl.className = 'err-msg';
+  if (!email || !pass) { errEl.textContent = 'Please enter your email and password.'; errEl.className = 'err-msg show'; return; }
+  var user = DB.parents.find(function(p) { return p.email.toLowerCase() === email && p.pass === pass && !p.isStaff; });
+  if (!user) { errEl.textContent = 'Incorrect email or password.'; errEl.className = 'err-msg show'; return; }
+  loginAs(user);
+}
+
+function staffLogin() {
+  var username = document.getElementById('s-user').value.trim().toLowerCase();
+  var pass = document.getElementById('s-pass').value;
+  var errEl = document.getElementById('err-staff');
+  errEl.className = 'err-msg';
+  var user = DB.parents.find(function(p) { return (p.email.toLowerCase() === username || (p.username && p.username.toLowerCase() === username)) && p.pass === pass && p.isStaff; });
+  if (!user) { errEl.textContent = 'Incorrect username or password.'; errEl.className = 'err-msg show'; return; }
+  loginAs(user);
+}
+
+function showRegister() { openModal('m-register'); }
+
+function doRegister() {
+  var first = document.getElementById('r-first').value.trim();
+  var last = document.getElementById('r-last').value.trim();
+  var email = document.getElementById('r-email').value.trim().toLowerCase();
+  var phone = document.getElementById('r-phone').value.trim();
+  var pass = document.getElementById('r-pass').value;
+  var errEl = document.getElementById('err-reg');
+  errEl.className = 'err-msg';
+  if (!first || !last || !email || !pass) { errEl.textContent = 'Please fill in all required fields.'; errEl.className = 'err-msg show'; return; }
+  if (pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.className = 'err-msg show'; return; }
+  if (DB.parents.find(function(p) { return p.email.toLowerCase() === email; })) { errEl.textContent = 'An account with this email already exists.'; errEl.className = 'err-msg show'; return; }
+  var user = {id: uid(), email: email, pass: pass, name: first + ' ' + last, phone: phone, isStaff: false, children: []};
+  DB.parents.push(user);
+  save();
+  closeModal('m-register');
+  loginAs(user);
+}
+
+function loginAs(user) {
+  currentUser = user;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  buildNav();
+  if (user.isStaff) {
+    goView('staff-dash');
+  } else {
+    goView('parent-home');
+  }
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('p-email').value = '';
+  document.getElementById('p-pass').value = '';
+  document.getElementById('s-user').value = '';
+  document.getElementById('s-pass').value = '';
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+var PARENT_VIEWS = [
+  {id:'parent-home',label:'Home',ico:'🏠'},
+  {id:'book-flow',label:'Book Session',ico:'⚽'},
+  {id:'parent-history',label:'My Bookings',ico:'📋'},
+  {id:'parent-account',label:'My Account',ico:'👤'}
+];
+var STAFF_VIEWS = [
+  {id:'staff-dash',label:'Dashboard',ico:'📊'},
+  {id:'staff-sessions',label:'Sessions',ico:'📅'},
+  {id:'staff-players',label:'Players',ico:'⚽'},
+  {id:'staff-attendance',label:'Attendance',ico:'✅'},
+  {id:'staff-account',label:'Account',ico:'⚙️'}
+];
+
+function buildNav() {
+  var views = currentUser.isStaff ? STAFF_VIEWS : PARENT_VIEWS;
+  var initials = (currentUser.name || '?').split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+  var role = currentUser.isStaff ? 'Staff Member' : 'Parent / Guardian';
+
+  document.getElementById('sb-avatar').textContent = initials;
+  document.getElementById('sb-name').textContent = currentUser.name || currentUser.email;
+  document.getElementById('sb-role').textContent = role;
+
+  var navHTML = '<div class="nav-section">' + (currentUser.isStaff ? 'Staff Menu' : 'Parent Menu') + '</div>';
+  views.forEach(function(v) {
+    navHTML += '<button class="nav-item" id="nav-' + v.id + '" onclick="goView(\'' + v.id + '\')" type="button"><span class="ico">' + v.ico + '</span>' + v.label + '</button>';
+  });
+  document.getElementById('sidebar-nav').innerHTML = navHTML;
+
+  var mobNavHTML = '';
+  var mobViews = views.slice(0, 4);
+  mobViews.forEach(function(v) {
+    mobNavHTML += '<button class="mob-nav-item" id="mnav-' + v.id + '" onclick="goView(\'' + v.id + '\')" type="button"><span class="ico">' + v.ico + '</span>' + v.label + '</button>';
+  });
+  document.getElementById('mob-nav-inner').innerHTML = mobNavHTML;
+
+  var mobSideHTML = '<div class="logo-wrap" style="padding:16px"><div style="font-family:var(--font-cond);font-size:24px;font-weight:900;color:var(--cyan);text-align:center">NSC Performance</div></div><div class="nav-section">' + (currentUser.isStaff ? 'Staff Menu' : 'Parent Menu') + '</div>';
+  views.forEach(function(v) {
+    mobSideHTML += '<button class="nav-item" onclick="goView(\'' + v.id + '\');toggleMobSidebar()" type="button"><span class="ico">' + v.ico + '</span>' + v.label + '</button>';
+  });
+  mobSideHTML += '<div style="padding:12px 16px;margin-top:16px;border-top:1px solid var(--border)"><button class="btn-logout" type="button" onclick="doLogout()" style="width:100%">Sign Out</button></div>';
+  document.getElementById('mob-sidebar-inner').innerHTML = mobSideHTML;
+}
+
+function toggleMobSidebar() {
+  var sb = document.getElementById('mob-sidebar');
+  sb.classList.toggle('open');
+}
+
+var _currentView = '';
+function goView(id) {
+  _currentView = id;
+  document.querySelectorAll('.view').forEach(function(el) { el.classList.remove('active'); });
+  var el = document.getElementById('v-' + id);
+  if (el) el.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(function(el2) { el2.classList.remove('active'); });
+  var ni = document.getElementById('nav-' + id);
+  if (ni) ni.classList.add('active');
+  document.querySelectorAll('.mob-nav-item').forEach(function(el2) { el2.classList.remove('active'); });
+  var mni = document.getElementById('mnav-' + id);
+  if (mni) mni.classList.add('active');
+
+  if (id === 'parent-home') renderParentHome();
+  else if (id === 'parent-history') renderHistory();
+  else if (id === 'parent-account') renderAccount();
+  else if (id === 'staff-dash') renderStaffDash();
+  else if (id === 'staff-sessions') renderSessions();
+  else if (id === 'staff-players') renderPlayers();
+  else if (id === 'staff-attendance') renderAttendance();
+  else if (id === 'book-flow') startBooking();
+}
+
+// ── PARENT HOME ───────────────────────────────────────────────
+function renderParentHome() {
+  var myChildren = getMyChildren();
+  var myBookings = getMyBookings();
+  var name = (currentUser.name || '').split(' ')[0];
+  document.getElementById('ph-greeting').textContent = 'Welcome back, ' + (name || 'there') + '!';
+
+  var upcoming = myBookings.filter(function(b) { return new Date(b.sessionDate + 'T00:00:00') >= new Date(); });
+  document.getElementById('ph-stats').innerHTML =
+    stat(myChildren.length, 'Children') +
+    stat(myBookings.length, 'Total Bookings') +
+    stat(upcoming.length, 'Upcoming') +
+    stat(gbp(myBookings.reduce(function(a,b){return a+(b.amount||0);},0)), 'Total Paid');
+
+  var chHTML = myChildren.length ? myChildren.map(function(c) {
+    return '<div class="part-card"><div class="part-card-top"><span class="part-name">' + esc(c.name) + '</span><span class="badge badge-cyan">' + esc(c.ageGroup||'') + '</span></div><div class="part-meta">' + (c.dob ? 'DOB: ' + fmtDate(c.dob) : '') + (c.medical ? '<br>⚠ Medical notes on file' : '') + '</div></div>';
+  }).join('') : '<div class="empty"><div class="empty-ico">👶</div><div class="empty-txt">No children added yet.</div></div>';
+  document.getElementById('ph-children').innerHTML = chHTML;
+
+  var bkHTML = myBookings.slice(-3).reverse().map(function(b) {
+    return '<div class="booking-item"><div class="booking-item-left"><div class="b-name">' + esc(b.sessionName) + '</div><div class="b-meta">' + fmtDate(b.sessionDate) + ' · ' + esc(b.childName) + '</div></div><div class="booking-item-right"><span class="badge badge-cyan">' + gbp(b.amount) + '</span><span class="badge badge-green">Confirmed</span></div></div>';
+  });
+  document.getElementById('ph-bookings').innerHTML = bkHTML.length ? bkHTML.join('') : '<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No bookings yet. <a onclick="startBooking()" style="color:var(--cyan);cursor:pointer">Book a session!</a></div></div>';
+}
+
+function stat(val, label) {
+  return '<div class="stat-card"><div class="stat-val">' + val + '</div><div class="stat-label">' + label + '</div></div>';
+}
+
+function getMyChildren() {
+  return DB.players.filter(function(p) { return p.parentId === currentUser.id; });
+}
+function getMyBookings() {
+  return DB.bookings.filter(function(b) { return b.parentId === currentUser.id; });
+}
+
+// ── BOOKING FLOW ──────────────────────────────────────────────
+function startBooking() {
+  bookState = {step: 1, selectedSessions: [], child: null, parentDetails: null, consents: false};
+  goView('book-flow');
+  renderBookStep();
+}
+
+function setStep(n) {
+  for (var i = 1; i <= 5; i++) {
+    var el = document.getElementById('step-' + i);
+    if (!el) continue;
+    el.className = 'step' + (i === n ? ' active' : (i < n ? ' done' : ''));
+  }
+}
+
+function renderBookStep() {
+  setStep(bookState.step);
+  var cont = document.getElementById('book-content');
+  if (bookState.step === 1) renderStep1(cont);
+  else if (bookState.step === 2) renderStep2(cont);
+  else if (bookState.step === 3) renderStep3(cont);
+  else if (bookState.step === 4) renderStep4(cont);
+  else if (bookState.step === 5) renderStep5(cont);
+}
+
+function renderStep1(cont) {
+  var upcoming = DB.sessions.filter(function(s) {
+    return new Date(s.date + 'T00:00:00') >= new Date() && (s.bookings || []).length < (s.capacity || 999);
+  }).sort(function(a,b) { return a.date > b.date ? 1 : -1; });
+
+  var html = '<div class="card"><div class="card-title">Select Sessions to Book</div>';
+  if (upcoming.length === 0) {
+    html += '<div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">No upcoming sessions available.</div></div>';
+  } else {
+    upcoming.forEach(function(s) {
+      var sel = bookState.selectedSessions.indexOf(s.id) > -1;
+      html += '<div class="sess-card' + (sel ? ' selected' : '') + '" onclick="toggleSession(\'' + s.id + '\')">';
+      html += '<div class="sess-name">' + esc(s.name) + '</div>';
+      html += '<div class="sess-meta"><span>📅 ' + fmtDate(s.date) + '</span><span>⏰ ' + fmtTime(s.time) + '</span><span>📍 ' + esc(s.location) + '</span><span>👥 ' + esc(s.ageGroup) + '</span></div>';
+      html += '<div class="sess-price">' + (s.price > 0 ? gbp(s.price) : 'FREE') + '</div>';
+      if (s.notes) html += '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">ℹ️ ' + esc(s.notes) + '</div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+  if (bookState.selectedSessions.length > 0) {
+    html += '<button class="btn btn-primary btn-w" type="button" onclick="nextStep()">Continue (' + bookState.selectedSessions.length + ' selected) →</button>';
+  }
+  cont.innerHTML = html;
+}
+
+function toggleSession(id) {
+  var idx = bookState.selectedSessions.indexOf(id);
+  if (idx > -1) bookState.selectedSessions.splice(idx, 1);
+  else bookState.selectedSessions.push(id);
+  renderBookStep();
+}
+
+function renderStep2(cont) {
+  var myKids = getMyChildren();
+  var html = '<div class="card"><div class="card-title">Who is this booking for?</div>';
+  if (myKids.length) {
+    myKids.forEach(function(c) {
+      var sel = bookState.child && bookState.child.id === c.id;
+      html += '<div class="sess-card' + (sel ? ' selected' : '') + '" onclick="selectChild(\'' + c.id + '\')">';
+      html += '<div class="sess-name">' + esc(c.name) + '</div>';
+      html += '<div class="sess-meta"><span>👥 ' + esc(c.ageGroup) + '</span>' + (c.dob ? '<span>🎂 ' + fmtDate(c.dob) + '</span>' : '') + '</div>';
+      html += '</div>';
+    });
+  }
+  html += '<button class="btn btn-ghost btn-w" type="button" onclick="showAddChild()" style="margin-top:8px">+ Add a new child</button>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:10px">';
+  html += '<button class="btn btn-ghost" type="button" onclick="prevStep()">← Back</button>';
+  if (bookState.child) html += '<button class="btn btn-primary" type="button" onclick="nextStep()">Continue →</button>';
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+function selectChild(id) {
+  bookState.child = DB.players.find(function(p) { return p.id === id; });
+  renderBookStep();
+}
+
+function renderStep3(cont) {
+  var pd = bookState.parentDetails || {};
+  var html = '<div class="card"><div class="card-title">Parent / Guardian Details</div>';
+  html += '<div class="form-row"><div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="pd-name" value="' + esc(pd.name || currentUser.name || '') + '" placeholder="Your full name"></div>';
+  html += '<div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" id="pd-phone" type="tel" value="' + esc(pd.phone || currentUser.phone || '') + '" placeholder="07xxx xxxxxx"></div></div>';
+  html += '<div class="form-group"><label class="form-label">Email Address</label><input class="form-input" id="pd-email" type="email" value="' + esc(pd.email || currentUser.email || '') + '" placeholder="your@email.com"></div>';
+  html += '<div class="form-group"><label class="form-label">Emergency Contact Name</label><input class="form-input" id="pd-ec-name" value="' + esc(pd.ecName || '') + '" placeholder="Emergency contact full name"></div>';
+  html += '<div class="form-group"><label class="form-label">Emergency Contact Phone</label><input class="form-input" id="pd-ec-phone" type="tel" value="' + esc(pd.ecPhone || '') + '" placeholder="07xxx xxxxxx"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:10px">';
+  html += '<button class="btn btn-ghost" type="button" onclick="prevStep()">← Back</button>';
+  html += '<button class="btn btn-primary" type="button" onclick="saveStep3()">Continue →</button>';
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+function saveStep3() {
+  var name = document.getElementById('pd-name').value.trim();
+  var phone = document.getElementById('pd-phone').value.trim();
+  var email = document.getElementById('pd-email').value.trim();
+  var ecName = document.getElementById('pd-ec-name').value.trim();
+  var ecPhone = document.getElementById('pd-ec-phone').value.trim();
+  if (!name || !phone || !email) { toast('Please fill in all required fields.', 'err'); return; }
+  bookState.parentDetails = {name: name, phone: phone, email: email, ecName: ecName, ecPhone: ecPhone};
+  nextStep();
+}
+
+function renderStep4(cont) {
+  var html = '<div class="card"><div class="card-title">Consents &amp; Declarations</div>';
+  html += '<div class="consent-block"><div class="consent-row"><input type="checkbox" class="consent-check" id="con-medical" ' + (bookState.c1 ? 'checked' : '') + ' onchange="bookState.c1=this.checked"><label for="con-medical" class="consent-text"><strong>Medical Consent:</strong> I consent to NSC Performance staff administering basic first aid to my child in an emergency, and confirm that all medical information provided is accurate and up to date.</label></div></div>';
+  html += '<div class="consent-block"><div class="consent-row"><input type="checkbox" class="consent-check" id="con-photo" ' + (bookState.c2 ? 'checked' : '') + ' onchange="bookState.c2=this.checked"><label for="con-photo" class="consent-text"><strong>Photography Consent:</strong> I consent to NSC Performance using photographs/videos taken during sessions for promotional and social media purposes (my child will not be identified by name without separate consent).</label></div></div>';
+  html += '<div class="consent-block"><div class="consent-row"><input type="checkbox" class="consent-check" id="con-terms" ' + (bookState.c3 ? 'checked' : '') + ' onchange="bookState.c3=this.checked"><label for="con-terms" class="consent-text"><strong>Terms &amp; Conditions:</strong> I have read and agree to NSC Performance\'s terms and conditions. I understand that session fees are non-refundable unless NSC cancels the session.</label></div></div>';
+  html += '<div class="consent-block"><div class="consent-row"><input type="checkbox" class="consent-check" id="con-collect" ' + (bookState.c4 ? 'checked' : '') + ' onchange="bookState.c4=this.checked"><label for="con-collect" class="consent-text"><strong>Collection Consent:</strong> I confirm I am the parent/guardian and take responsibility for the safe collection of my child at the end of each session.</label></div></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:10px">';
+  html += '<button class="btn btn-ghost" type="button" onclick="prevStep()">← Back</button>';
+  html += '<button class="btn btn-primary" type="button" onclick="checkConsents()">Continue →</button>';
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+function checkConsents() {
+  if (!bookState.c1 || !bookState.c3 || !bookState.c4) {
+    toast('Please accept the required consents to continue.', 'err'); return;
+  }
+  nextStep();
+}
+
+function renderStep5(cont) {
+  var total = bookState.selectedSessions.reduce(function(acc, id) {
+    var s = DB.sessions.find(function(s) { return s.id === id; });
+    return acc + (s ? (parseFloat(s.price) || 0) : 0);
+  }, 0);
+  bookState._total = total;
+
+  var sessSummary = bookState.selectedSessions.map(function(id) {
+    var s = DB.sessions.find(function(s) { return s.id === id; });
+    return s ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span>' + esc(s.name) + '<br><span style="color:var(--text-muted);font-size:11px">' + fmtDate(s.date) + ' · ' + fmtTime(s.time) + '</span></span><span style="font-weight:800;color:var(--cyan)">' + (parseFloat(s.price) > 0 ? gbp(s.price) : 'FREE') + '</span></div>' : '';
+  }).join('');
+
+  var html = '<div class="card"><div class="card-title">Order Summary</div>' + sessSummary;
+  html += '<div style="display:flex;justify-content:space-between;padding:12px 0;font-size:16px;font-weight:800;color:var(--text)"><span>Total</span><span style="color:var(--cyan)">' + gbp(total) + '</span></div>';
+  html += '</div>';
+
+  if (total > 0) {
+    html += '<div class="card"><div class="card-title">💳 Card Payment</div>';
+    html += '<div class="payment-total"><div class="payment-total-label">Amount to Pay</div><div class="payment-total-amount">' + gbp(total) + '</div></div>';
+    html += '<div class="secure-note">🔒 Secure payment powered by Stripe. Your card details are never stored.</div>';
+    html += '<div class="form-group"><label class="form-label">Card Details</label><div class="stripe-wrap" id="card-element">Loading secure card form…</div></div>';
+    html += '<div id="card-errors" style="color:var(--red);font-size:13px;margin-bottom:12px;min-height:18px"></div>';
+    html += '<div style="display:flex;gap:10px">';
+    html += '<button class="btn btn-ghost" type="button" onclick="prevStep()">← Back</button>';
+    html += '<button class="btn btn-primary" type="button" id="pay-btn" onclick="doPayment()" style="flex:1;justify-content:center"><span id="pay-label">Pay ' + gbp(total) + '</span><div class="pay-spinner" id="pay-spinner"></div></button>';
+    html += '</div>';
+    html += '</div>';
+  } else {
+    html += '<div style="display:flex;gap:10px">';
+    html += '<button class="btn btn-ghost" type="button" onclick="prevStep()">← Back</button>';
+    html += '<button class="btn btn-primary" type="button" onclick="completeFreeBooking()" style="flex:1">Confirm Free Booking ✓</button>';
+    html += '</div>';
+  }
+
+  cont.innerHTML = html;
+
+  if (total > 0) {
+    setTimeout(function() { mountStripeCard(); }, 100);
+  }
+}
+
+function mountStripeCard() {
+  if (!_stripe) {
+    // Stripe not loaded yet or PK not set
+    var el = document.getElementById('card-element');
+    if (el) {
+      if (STRIPE_PK.indexOf('REPLACE') > -1) {
+        el.innerHTML = '<div style="color:var(--amber);font-size:13px;padding:8px">⚠ Stripe publishable key not set. Update STRIPE_PK in the code and set STRIPE_SECRET_KEY in Vercel env vars.</div>';
+      } else {
+        el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Loading payment form…</div>';
+        // Retry after short delay
+        setTimeout(function() {
+          if (window.Stripe) { _stripe = Stripe(STRIPE_PK); mountStripeCard(); }
+        }, 800);
+      }
+    }
+    return;
+  }
+
+  if (_cardElement) {
+    try { _cardElement.destroy(); } catch(e) {}
+    _cardElement = null;
+  }
+
+  var elements = _stripe.elements({
+    fonts: [{cssSrc: 'https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&display=swap'}]
+  });
+
+  _cardElement = elements.create('card', {
+    hidePostalCode: true,
+    style: {
+      base: {
+        fontFamily: "'Barlow', sans-serif",
+        fontSize: '15px',
+        color: '#e2eaf2',
+        fontWeight: '500',
+        '::placeholder': {color: '#7a9ab8'},
+        iconColor: '#00C2E0'
+      },
+      invalid: {color: '#ef4444', iconColor: '#ef4444'}
+    }
+  });
+
+  var wrap = document.getElementById('card-element');
+  if (wrap) {
+    wrap.innerHTML = '';
+    _cardElement.mount('#card-element');
+    _cardElement.on('change', function(e) {
+      var errEl = document.getElementById('card-errors');
+      if (errEl) errEl.textContent = e.error ? e.error.message : '';
+      var w = document.getElementById('card-element');
+      if (w) w.className = 'stripe-wrap' + (e.error ? '' : (e.complete ? ' focused' : ''));
+    });
+  }
+}
+
+function doPayment() {
+  if (!_stripe || !_cardElement) { toast('Payment form not ready. Please wait a moment.', 'err'); return; }
+
+  var btn = document.getElementById('pay-btn');
+  var label = document.getElementById('pay-label');
+  var spinner = document.getElementById('pay-spinner');
+  var errEl = document.getElementById('card-errors');
+
+  btn.disabled = true;
+  if (label) label.style.display = 'none';
+  if (spinner) spinner.style.display = 'block';
+  if (errEl) errEl.textContent = '';
+
+  var total = bookState._total;
+  var pd = bookState.parentDetails;
+  var child = bookState.child;
+  var sessions = bookState.selectedSessions.map(function(id) {
+    return DB.sessions.find(function(s) { return s.id === id; });
+  }).filter(Boolean);
+
+  var desc = 'NSC Performance: ' + sessions.map(function(s){return s.name;}).join(', ') + ' for ' + (child ? child.name : '');
+
+  fetch('/api/create-payment', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      amount: Math.round(total * 100), // convert to pence
+      description: desc,
+      customerEmail: pd ? pd.email : '',
+      metadata: {
+        childName: child ? child.name : '',
+        parentName: pd ? pd.name : '',
+        sessions: sessions.map(function(s){return s.id;}).join(',')
+      }
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    return _stripe.confirmCardPayment(data.clientSecret, {
+      payment_method: {
+        card: _cardElement,
+        billing_details: {
+          name: pd ? pd.name : '',
+          email: pd ? pd.email : '',
+          phone: pd ? pd.phone : ''
+        }
+      }
+    });
+  })
+  .then(function(result) {
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+      return completeBooking(total, result.paymentIntent.id);
+    } else {
+      throw new Error('Payment did not complete successfully.');
+    }
+  })
+  .catch(function(err) {
+    btn.disabled = false;
+    if (label) label.style.display = '';
+    if (spinner) spinner.style.display = 'none';
+    if (errEl) errEl.textContent = err.message || 'Payment failed. Please try again.';
+    toast('Payment failed: ' + (err.message || 'Please try again.'), 'err');
+  });
+}
+
+function completeBooking(amount, paymentRef) {
+  var child = bookState.child;
+  var pd = bookState.parentDetails;
+  var sessions = bookState.selectedSessions.map(function(id) {
+    return DB.sessions.find(function(s) { return s.id === id; });
+  }).filter(Boolean);
+
+  var ref = paymentRef || ('NSC-' + Date.now());
+
+  // Save bookings to DB
+  sessions.forEach(function(sess) {
+    var bk = {
+      id: uid(),
+      parentId: currentUser.id,
+      childId: child ? child.id : '',
+      childName: child ? child.name : '',
+      sessionId: sess.id,
+      sessionName: sess.name,
+      sessionDate: sess.date,
+      sessionTime: sess.time,
+      sessionLocation: sess.location,
+      amount: parseFloat(sess.price) || 0,
+      paymentRef: ref,
+      status: 'confirmed',
+      bookedAt: new Date().toISOString()
+    };
+    DB.bookings.push(bk);
+    if (!sess.bookings) sess.bookings = [];
+    sess.bookings.push(currentUser.id);
+  });
+  save();
+
+  // Send confirmation emails (non-blocking — don't fail booking if email fails)
+  var emailPayload = {
+    parentName: pd ? pd.name : currentUser.name,
+    parentEmail: pd ? pd.email : currentUser.email,
+    parentPhone: pd ? pd.phone : currentUser.phone,
+    childName: child ? child.name : '',
+    childDob: child ? child.dob : '',
+    childAgeGroup: child ? child.ageGroup : '',
+    medicalNotes: child ? child.medical : '',
+    sessions: sessions.map(function(s) { return {name:s.name, date:fmtDate(s.date), time:fmtTime(s.time), location:s.location, price:gbp(parseFloat(s.price)||0)}; }),
+    totalPaid: amount,
+    paymentRef: ref
+  };
+  fetch('/api/send-confirmation', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(emailPayload)
+  }).catch(function() {});
+
+  showConfirmation(amount, sessions, child, ref);
+}
+
+function completeFreeBooking() {
+  completeBooking(0, 'FREE-' + Date.now());
+}
+
+function showConfirmation(amount, sessions, child, ref) {
+  setStep(5);
+  var sessList = sessions.map(function(s) {
+    return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span>' + esc(s.name) + '<br><span style="color:var(--text-muted);font-size:11px">' + fmtDate(s.date) + ' at ' + fmtTime(s.time) + '</span></span><span style="color:var(--cyan);font-weight:800">' + gbp(parseFloat(s.price)||0) + '</span></div>';
+  }).join('');
+
+  document.getElementById('book-content').innerHTML =
+    '<div class="card" style="text-align:center">' +
+    '<div style="font-size:56px;margin-bottom:12px">🎉</div>' +
+    '<div style="font-family:var(--font-cond);font-size:30px;font-weight:900;color:var(--text);margin-bottom:6px">Booking Confirmed!</div>' +
+    '<div style="font-size:14px;color:var(--text-muted);margin-bottom:24px">' + (child ? child.name : '') + '\'s place is secured.</div>' +
+    '<div style="background:var(--green-dim);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px;margin-bottom:18px;text-align:left">' +
+    '<div style="font-weight:800;margin-bottom:8px;font-size:13px;color:var(--green)">SESSIONS BOOKED</div>' + sessList + '</div>' +
+    (amount > 0 ?
+      '<div style="font-family:var(--font-cond);font-size:32px;font-weight:900;color:var(--green);margin-bottom:4px">' + gbp(amount) + ' paid</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:18px">Ref: ' + esc(ref) + ' · Confirmation email sent</div>' :
+      '<div style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Free session — no payment required</div>') +
+    '<div style="background:var(--cyan-dim);border:1px solid rgba(0,194,224,0.2);border-radius:9px;padding:12px;font-size:13px;color:var(--text);text-align:left;margin-bottom:20px">' +
+    '📧 A confirmation email has been sent to you.<br>⚽ Please bring boots, shin pads and water.<br>📞 Questions? info@nscperformance.co.uk</div>' +
+    '<button class="btn btn-p btn-w" type="button" onclick="goView(\'parent-home\')">Back to Home</button>' +
+    '<button class="btn btn-g btn-w" style="margin-top:8px" type="button" onclick="goView(\'parent-history\')">View My Bookings</button>' +
+    '</div>';
+}
+
+function nextStep() {
+  if (bookState.step === 1 && bookState.selectedSessions.length === 0) { toast('Please select at least one session.', 'err'); return; }
+  if (bookState.step === 2 && !bookState.child) { toast('Please select or add a child.', 'err'); return; }
+  bookState.step++;
+  renderBookStep();
+  document.getElementById('main').scrollTop = 0;
+}
+
+function prevStep() {
+  if (bookState.step > 1) { bookState.step--; renderBookStep(); }
+  else { goView('parent-home'); }
+}
+
+// ── HISTORY ───────────────────────────────────────────────────
+function renderHistory() {
+  var bks = getMyBookings().sort(function(a,b) { return a.sessionDate > b.sessionDate ? 1 : -1; });
+  var html = bks.length ? bks.map(function(b) {
+    return '<div class="booking-item"><div class="booking-item-left"><div class="b-name">' + esc(b.sessionName) + '</div><div class="b-meta">' + fmtDate(b.sessionDate) + ' at ' + fmtTime(b.sessionTime) + ' · ' + esc(b.childName) + ' · Ref: ' + esc(b.paymentRef||'—') + '</div></div><div class="booking-item-right"><span class="badge badge-cyan">' + gbp(b.amount) + '</span><span class="badge badge-green">Confirmed</span></div></div>';
+  }).join('') : '<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No bookings yet.</div></div>';
+  document.getElementById('hist-list').innerHTML = html;
+}
+
+// ── ACCOUNT ───────────────────────────────────────────────────
+function renderAccount() {
+  document.getElementById('acct-details').innerHTML =
+    '<div style="font-size:14px;color:var(--text);line-height:2"><strong>Name:</strong> ' + esc(currentUser.name||'') + '<br><strong>Email:</strong> ' + esc(currentUser.email||'') + '<br><strong>Phone:</strong> ' + esc(currentUser.phone||'—') + '</div>';
+  var kids = getMyChildren();
+  document.getElementById('acct-children').innerHTML = kids.length ?
+    kids.map(function(c) {
+      return '<div class="part-card"><div class="part-card-top"><span class="part-name">' + esc(c.name) + '</span><span class="badge badge-cyan">' + esc(c.ageGroup||'') + '</span></div><div class="part-meta">DOB: ' + fmtDate(c.dob) + (c.medical ? '<br><span style="color:var(--amber)">⚠ ' + esc(c.medical) + '</span>' : '') + '</div></div>';
+    }).join('') :
+    '<div class="empty"><div class="empty-ico">👶</div><div class="empty-txt">No children added. <a onclick="showAddChild()" style="color:var(--cyan);cursor:pointer">Add one now.</a></div></div>';
+}
+
+function showAddChild() {
+  document.getElementById('c-first').value = '';
+  document.getElementById('c-last').value = '';
+  document.getElementById('c-dob').value = '';
+  document.getElementById('c-age').value = 'U9s';
+  document.getElementById('c-medical').value = '';
+  openModal('m-child');
+}
+
+function saveChild() {
+  var first = document.getElementById('c-first').value.trim();
+  var last = document.getElementById('c-last').value.trim();
+  var dob = document.getElementById('c-dob').value;
+  var age = document.getElementById('c-age').value;
+  var med = document.getElementById('c-medical').value.trim();
+  if (!first || !last) { toast('Please enter the child\'s name.', 'err'); return; }
+  var child = {id: uid(), parentId: currentUser.id, name: first + ' ' + last, dob: dob, ageGroup: age, medical: med};
+  DB.players.push(child);
+  save();
+  closeModal('m-child');
+  toast(first + ' added successfully!', 'ok');
+  if (_currentView === 'parent-account') renderAccount();
+  else if (_currentView === 'book-flow' && bookState.step === 2) {
+    bookState.child = child;
+    renderBookStep();
+  }
+}
+
+// ── STAFF DASHBOARD ───────────────────────────────────────────
+function renderStaffDash() {
+  var today = new Date().toISOString().split('T')[0];
+  var upcoming = DB.sessions.filter(function(s) { return s.date >= today; });
+  var total = DB.bookings.reduce(function(a,b){return a+(b.amount||0);}, 0);
+
+  document.getElementById('staff-stats').innerHTML =
+    stat(DB.sessions.length, 'Sessions') +
+    stat(DB.players.length, 'Players') +
+    stat(DB.bookings.length, 'Bookings') +
+    stat(gbp(total), 'Revenue');
+
+  var upHTML = upcoming.slice(0,5).map(function(s) {
+    var spots = (s.capacity||0) - (s.bookings||[]).length;
+    return '<div class="booking-item"><div class="booking-item-left"><div class="b-name">' + esc(s.name) + '</div><div class="b-meta">' + fmtDate(s.date) + ' · ' + esc(s.ageGroup) + ' · ' + (s.bookings||[]).length + '/' + (s.capacity||'∞') + ' booked</div></div><div class="booking-item-right"><span class="badge ' + (spots > 3 ? 'badge-green' : spots > 0 ? 'badge-amber' : 'badge-red') + '">' + (spots > 0 ? spots + ' spots' : 'Full') + '</span></div></div>';
+  }).join('') || '<div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">No upcoming sessions.</div></div>';
+  document.getElementById('staff-upcoming').innerHTML = upHTML;
+
+  var recentBks = DB.bookings.slice(-5).reverse().map(function(b) {
+    return '<div class="booking-item"><div class="booking-item-left"><div class="b-name">' + esc(b.childName) + '</div><div class="b-meta">' + esc(b.sessionName) + ' · ' + fmtDate(b.bookedAt ? b.bookedAt.split('T')[0] : b.sessionDate) + '</div></div><div class="booking-item-right"><span class="badge badge-cyan">' + gbp(b.amount) + '</span></div></div>';
+  }).join('') || '<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No bookings yet.</div></div>';
+  document.getElementById('staff-recent').innerHTML = recentBks;
+}
+
+// ── STAFF SESSIONS ────────────────────────────────────────────
+function renderSessions() {
+  var html = DB.sessions.map(function(s) {
+    var booked = (s.bookings||[]).length;
+    var cap = s.capacity || 0;
+    return '<div class="card" style="margin-bottom:14px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:12px;flex-wrap:wrap">' +
+      '<div><div style="font-family:var(--font-cond);font-size:18px;font-weight:900;color:var(--text)">' + esc(s.name) + '</div>' +
+      '<div style="font-size:13px;color:var(--text-muted);margin-top:3px">' + fmtDate(s.date) + ' · ' + fmtTime(s.time) + ' · ' + esc(s.location) + '</div></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<span class="badge badge-cyan">' + gbp(s.price) + '</span>' +
+      '<span class="badge badge-' + (booked >= cap ? 'red' : booked >= cap * 0.8 ? 'amber' : 'green') + '">' + booked + '/' + cap + '</span>' +
+      '</div></div>' +
+      '<div style="display:flex;gap:8px">' +
+      '<button class="btn btn-ghost btn-sm" type="button" onclick="editSession(\'' + s.id + '\')">✏️ Edit</button>' +
+      '<button class="btn btn-danger btn-sm" type="button" onclick="deleteSession(\'' + s.id + '\')">🗑 Delete</button>' +
+      '</div></div>';
+  }).join('') || '<div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">No sessions created yet.</div></div>';
+  document.getElementById('sessions-list').innerHTML = html;
+}
+
+function showAddSession() {
+  _editSessId = null;
+  document.getElementById('m-sess-title').textContent = 'Add Session';
+  document.getElementById('sess-name').value = '';
+  document.getElementById('sess-date').value = '';
+  document.getElementById('sess-time').value = '';
+  document.getElementById('sess-loc').value = '';
+  document.getElementById('sess-price').value = '5';
+  document.getElementById('sess-cap').value = '20';
+  document.getElementById('sess-notes').value = '';
+  openModal('m-session');
+}
+
+function editSession(id) {
+  var s = DB.sessions.find(function(s) { return s.id === id; });
+  if (!s) return;
+  _editSessId = id;
+  document.getElementById('m-sess-title').textContent = 'Edit Session';
+  document.getElementById('sess-name').value = s.name || '';
+  document.getElementById('sess-date').value = s.date || '';
+  document.getElementById('sess-time').value = s.time || '';
+  document.getElementById('sess-loc').value = s.location || '';
+  document.getElementById('sess-type').value = s.type || 'Youth Football';
+  document.getElementById('sess-age').value = s.ageGroup || 'Mixed';
+  document.getElementById('sess-price').value = s.price || '';
+  document.getElementById('sess-cap').value = s.capacity || '';
+  document.getElementById('sess-notes').value = s.notes || '';
+  openModal('m-session');
+}
+
+function saveSession() {
+  var name = document.getElementById('sess-name').value.trim();
+  var date = document.getElementById('sess-date').value;
+  var time = document.getElementById('sess-time').value;
+  var loc = document.getElementById('sess-loc').value.trim();
+  var price = parseFloat(document.getElementById('sess-price').value) || 0;
+  var cap = parseInt(document.getElementById('sess-cap').value) || 20;
+  var type = document.getElementById('sess-type').value;
+  var age = document.getElementById('sess-age').value;
+  var notes = document.getElementById('sess-notes').value.trim();
+  if (!name || !date || !loc) { toast('Please fill in name, date and location.', 'err'); return; }
+
+  if (_editSessId) {
+    var s = DB.sessions.find(function(s) { return s.id === _editSessId; });
+    if (s) { s.name=name; s.date=date; s.time=time; s.location=loc; s.type=type; s.ageGroup=age; s.price=price; s.capacity=cap; s.notes=notes; }
+  } else {
+    DB.sessions.push({id:uid(),name:name,date:date,time:time,location:loc,type:type,ageGroup:age,price:price,capacity:cap,notes:notes,bookings:[]});
+  }
+  save();
+  closeModal('m-session');
+  toast(_editSessId ? 'Session updated!' : 'Session added!', 'ok');
+  renderSessions();
+}
+
+function deleteSession(id) {
+  if (!confirm('Delete this session?')) return;
+  DB.sessions = DB.sessions.filter(function(s) { return s.id !== id; });
+  save();
+  renderSessions();
+  toast('Session deleted.', 'ok');
+}
+
+// ── STAFF PLAYERS ─────────────────────────────────────────────
+function renderPlayers() {
+  var html = DB.players.map(function(p) {
+    var parent = DB.parents.find(function(u) { return u.id === p.parentId; });
+    return '<div class="part-card">' +
+      '<div class="part-card-top"><span class="part-name">' + esc(p.name) + '</span><span class="badge badge-cyan">' + esc(p.ageGroup||'') + '</span></div>' +
+      '<div class="part-meta">DOB: ' + fmtDate(p.dob) + '<br>Parent: ' + esc(parent ? parent.name : '—') + ' · ' + esc(parent ? parent.phone || parent.email : '—') +
+      (p.medical ? '<br><span style="color:var(--amber)">⚠ ' + esc(p.medical) + '</span>' : '') + '</div></div>';
+  }).join('') || '<div class="empty"><div class="empty-ico">⚽</div><div class="empty-txt">No players registered yet.</div></div>';
+  document.getElementById('players-list').innerHTML = html;
+}
+
+// ── STAFF ATTENDANCE ──────────────────────────────────────────
+function renderAttendance() {
+  var sel = document.getElementById('att-session');
+  var prev = sel.value;
+  sel.innerHTML = DB.sessions.map(function(s) {
+    return '<option value="' + s.id + '" ' + (s.id === prev ? 'selected' : '') + '>' + esc(s.name) + ' — ' + fmtDate(s.date) + '</option>';
+  }).join('');
+  if (prev && DB.sessions.find(function(s){return s.id===prev;})) sel.value = prev;
+  loadAttendance();
+}
+
+function loadAttendance() {
+  var sessId = document.getElementById('att-session').value;
+  var sess = DB.sessions.find(function(s) { return s.id === sessId; });
+  if (!sess) { document.getElementById('att-list').innerHTML = ''; return; }
+  var bookings = DB.bookings.filter(function(b) { return b.sessionId === sessId; });
+  if (!DB.attendance[sessId]) DB.attendance[sessId] = {};
+  var att = DB.attendance[sessId];
+
+  var html = bookings.length ?
+    '<div class="table-wrap"><table><thead><tr><th>Child</th><th>Parent</th><th>Booking Ref</th><th>Attended</th></tr></thead><tbody>' +
+    bookings.map(function(b) {
+      return '<tr><td><strong>' + esc(b.childName) + '</strong></td><td>' + esc(b.parentName||'—') + '</td><td style="font-family:monospace;font-size:12px">' + esc(b.paymentRef||'—') + '</td><td>' +
+        '<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" ' + (att[b.id] ? 'checked' : '') + ' onchange="markAtt(\'' + sessId + '\',\'' + b.id + '\',this.checked)" style="accent-color:var(--green);width:18px;height:18px"> <span style="color:' + (att[b.id] ? 'var(--green)' : 'var(--text-muted)') + ';font-weight:700">' + (att[b.id] ? 'Present' : 'Absent') + '</span></label>' +
+        '</td></tr>';
+    }).join('') + '</tbody></table></div>' :
+    '<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">No bookings for this session yet.</div></div>';
+  document.getElementById('att-list').innerHTML = html;
+}
+
+function markAtt(sessId, bookId, val) {
+  if (!DB.attendance[sessId]) DB.attendance[sessId] = {};
+  DB.attendance[sessId][bookId] = val;
+  save();
+  loadAttendance();
+}
+
+// ── ENTER KEY SUPPORT ─────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    var ls = document.getElementById('login-screen');
+    if (ls && ls.style.display !== 'none') {
+      var parentPanel = document.getElementById('panel-parent');
+      if (parentPanel && parentPanel.style.display !== 'none') parentLogin();
+      else staffLogin();
+    }
+  }
+});
+</script>
+</body>
+</html>
